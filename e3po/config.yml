@@ -1,0 +1,25 @@
+absolute_project_path: /Users/howard1209a/Desktop/codes/e3po/
+ffmpeg_path: /opt/homebrew/bin/ffmpeg
+group_name: dynamic_chunk
+settings:
+  video: # 原视频必须是2*3布局的cmp格式
+    video_duration: 10 # 视频长度 单位秒
+    video_name: dd.mp4 # 直播视频名称
+    height: 960 # 视频高度
+    width: 1440 # 视频宽度
+    bitrate_list: [] # 比特率列表
+    tile_width_num: 6 # 横向瓦片个数，需为3的倍数，比如单面分2*2瓦片，则此处为6
+    tile_height_num: 4 # 竖向瓦片个数，需为2的倍数，比如单面分2*2瓦片，则此处为4
+  motion:
+    motion_file: release_video_1_motion_1.txt # 视野角度文件
+    motion_frequency: 100 # 视野采样率
+    range_fov: [ 89, 89 ] # fov，单位是度，[竖向,横向]
+  network:
+    network_trace_file: aa # 网络带宽文件
+  algorithm:
+    abr_strategy: dynamic_chunk # abr策略选择
+
+
+
+
+
