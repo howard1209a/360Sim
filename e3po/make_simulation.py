@@ -21,9 +21,10 @@ class Sim():
             self.config = yaml.safe_load(yaml_file)
         self.load_motion_record()
         self.load_motion_clock()
+        self.load_bandwidth_record()
 
     def simulation(self):
-        net_sim = NetSim(motion_clock)
+        net_sim = NetSim(self.motion_record, self.motion_clock, self.bandwidth_record, self.config)
         net_sim.start_watch()
 
     def load_motion_record(self):
@@ -40,88 +41,131 @@ class Sim():
         self.motion_clock = list(range(0, max_motion_ts, interval))
 
     def load_bandwidth_record(self):
-        pass
+        network_file_path = self.config["absolute_project_path"] + "e3po/source/network_trace/" + \
+                            self.config["settings"]["network"]["network_trace_file"]  # 结果文件输出路径
+        self.bandwidth_record = []
+
+        # 打开文件并读取每一行
+        with open(network_file_path, 'r') as f:
+            for line in f:
+                columns = line.strip().split()
+                self.bandwidth_record.append(float(columns[1]))
 
 
 class NetSim():
-    def __init__(self, motion_record, motion_clock, config):
-        self.config = config
+    def __init__(self, motion_record, motion_clock, bandwidth_record, config):
+        self.config = config  # 配置文件
 
         # 超参数设置
-        self.motion_history_length = 2000
-        self.bandwidth_history_length = 4000
-        self.bitrate_list = [20, 50, 100]  # 从小到大，单位kbps
+        self.motion_history_length = config["settings"]["algorithm"][
+            "motion_history_length"]  # abr算法决策时所依据的历史视野角度长度，单位为ms
+        self.bandwidth_history_length = config["settings"]["algorithm"][
+            "bandwidth_history_length"]  # abr算法决策时所依据的历史带宽长度，单位为ms
+        self.bitrate_list = config["settings"]["algorithm"]["bitrate_list"]  # 多比特率分级，从小到大，单位kbps
 
         # 网络模拟参数
-        self.chunk_list = []
-        self.chunk_index_playing = 0
-        self.chunk_index_next = 0
-        self.bandwidth_record = []
-        self.motion_clock = motion_clock
-        self.remain_chunk_data = 0
-        self.clock = 0
-        self.motion_clock_rate = 100  # 每秒时钟数
-        self.motion_clock_interval = 10  # 单位ms，与motion_clock_rate呈倒数
-        self.download_chunk_now = None
-        self.motion_record = motion_record
-        self.tile_list = []
+        self.bandwidth_record = bandwidth_record  # 带宽纪录，采样率为1
+        self.motion_record = motion_record  # 视野角度纪录
+        self.motion_clock_rate = config["settings"]["motion"]["motion_frequency"]  # 视野角度纪录采样率，需与视野角度纪录对应
+        self.motion_clock = motion_clock  # 视频长度内的视野角度时间戳
+        self.clock = 0  # 当前时刻时间戳
+        self.motion_clock_interval = 1000 / self.motion_clock_rate  # 视野角度采样间隔，单位ms
+
+        self.chunk_list = []  # 当前已下载的chunk，当一个chunk被下载下来后会加入到该列表
+        self.chunk_index_playing = -1  # 当前正在播放的chunk的索引
+        self.chunk_index_next = 0  # 下一个要下载的chunk索引，等于len(chunk_list)
+        self.remain_chunk_data = 0  # 当前正在下载的chunk的剩余未下载数据量
+        self.download_chunk_now = None  # 当前正在下载的chunk
 
         # 视频源参数
-        self.video_width = config["settings"]["video"]["width"]
-        self.video_height = config["settings"]["video"]["height"]
-        self.tile_count = config["settings"]["video"]["tile_width_num"] * config["settings"]["video"]["tile_height_num"]
+        self.video_width = config["settings"]["video"]["width"]  # 视频宽度
+        self.video_height = config["settings"]["video"]["height"]  # 视频高度
+        self.tile_count = config["settings"]["video"]["tile_width_num"] * config["settings"]["video"][
+            "tile_height_num"]  # 画面tile总数
 
         # 播放器参数
-        self.agent = None
-        self.buffer_length = 0  # 单位ms
-        self.is_rebuffer_now = False
-        self.play_timestamp = 0
-        self.range_fov = config["settings"]["motion"]["range_fov"]
-        self.sampling_size = [50, 50]
-        self.latency = 0
+        self.agent = LowestBitrateAgent()  # abr策略智能体
+        self.buffer_length = 0  # 当前缓冲区长度，单位ms
+        self.is_rebuffer_now = False  # 当前是否正在卡顿
+        self.play_timestamp = 0  # 当前的播放时间戳
+        self.range_fov = config["settings"]["motion"]["range_fov"]  # fov，单位是度，[竖向,横向]
+        self.sampling_size = [50, 50]  # 视野内画面点采样率
+        self.latency = 0  # 当前直播延迟
 
         # 仿真结果参数
-        self.record_file_path = config["absolute_project_path"] + "e3po/result/" + config["group_name"] + "/result.csv"
-        self.metric_list = ["clock", "avg_frame_bitrate", "frame_bitrate_deviation", "is_rebuffer", "latency"]
+        self.record_file_path = config["absolute_project_path"] + "e3po/result/" + config[
+            "group_name"] + "/result.csv"  # 结果文件输出路径
+        self.metric_list = ["clock", "avg_frame_bitrate", "frame_bitrate_deviation", "is_rebuffer",
+                            "latency"]  # 需要纪录的指标列表
 
     def start_watch(self):
+        if os.path.exists(self.record_file_path):
+            os.remove(self.record_file_path)
         with open(self.record_file_path, mode='a', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
             writer.writerow(self.metric_list)
 
+        # 决策第一个chunk，无先验信息
+        dowaload_decision, bitrate_decision, chunk_length = self.agent.make_first_decision(self.tile_count)
+        self.download_chunk_now = Chunk(0, dowaload_decision, bitrate_decision,
+                                        chunk_length,
+                                        self.play_timestamp, self.buffer_length, self.config)
+        self.chunk_index_next = 1
+        self.remain_chunk_data = self.download_chunk_now.get_chunk_data_size()
+
         for clock in self.motion_clock:
             self.clock = clock
 
-            if self.buffer_length < 10:
-                self.play_timestamp += self.buffer_length
-                self.buffer_length = 0
-                self.is_rebuffer_now = True
-                self.latency += 10 - self.buffer_length
-            else:
-                self.play_timestamp += 10
-                self.buffer_length -= 10
-                self.is_rebuffer_now = False
+            # 如果当前已经有正在播放的chunk，
+            # 并且当前绝对时间戳减当前直播延迟（也就是当前的播放时间戳）大于当前正在播放的chunk在原视频的结束时间戳，
+            # 并且当前正在播放的chunk的下一个chunk已经下载下来了，
+            # 就可以切换下一个chunk播放
+            if self.chunk_index_playing != -1 and self.chunk_list[
+                self.chunk_index_playing].end_timestamp < self.clock - self.latency and len(
+                self.chunk_list) > self.chunk_index_playing + 1:
+                self.chunk_index_playing += 1
 
-            if self.clock > self.chunk_list[self.chunk_index_now].end_clock:
-                self.chunk_index_now += 1
-            bandwidth_interval = self.bandwidth_record[self.clock / 1000] / self.motion_clock_rate
-            if bandwidth_interval < self.remain_chunk_data:
-                self.remain_chunk_data -= bandwidth_interval
-            else:
+            if self.buffer_length < self.motion_clock_interval:  # 当前缓冲区会在本次间隔消耗完
+                self.play_timestamp += self.buffer_length  # 播放时间戳推动buffer长度
+                self.buffer_length = 0  # buffer清空
+                self.is_rebuffer_now = True  # 出现卡顿
+                self.latency += self.motion_clock_interval - self.buffer_length  # 积累直播延迟
+            else:  # 当前缓冲区不会在本次间隔消耗完
+                self.play_timestamp += self.motion_clock_interval  # 播放时间戳推动单个时间间隔
+                self.buffer_length -= self.motion_clock_interval  # buffer长度缩减单个时间间隔
+                self.is_rebuffer_now = False  # 未处于卡顿状态
+
+            # 本次时间间隔所能消耗的带宽
+            bandwidth_in_interval = self.bandwidth_record[int(self.clock / 1000)] / self.motion_clock_rate
+            if bandwidth_in_interval < self.remain_chunk_data:  # 当前正在下载chunk的剩余数据量大于本次时间间隔所能消耗的带宽，本次不能下载完一个chunk
+                self.remain_chunk_data -= bandwidth_in_interval  # 扣减当前正在下载chunk的剩余数据量
+            else:  # 本次下载下来了一个chunk
+                # 如果本次下载下来的chunk为第一个chunk，则正式开始播放
+                if len(self.chunk_list) == 0:
+                    self.chunk_index_playing = 0
+
+                # 本次下载下来的chunk加入已下载chunk列表
                 self.chunk_list.append(self.download_chunk_now)
-                self.buffer_length += self.download_chunk_now.chunk_length
+                # 填充buffer长度
+                self.buffer_length += self.download_chunk_now.chunk_length * 1000
+                # 卡顿状态为未卡顿
                 if self.is_rebuffer_now:
                     self.is_rebuffer_now = False
+                # 立即开始下载下一个chunk，做abr决策
                 dowaload_decision, bitrate_decision, chunk_length = self.agent.make_decision(self.buffer_length,
                                                                                              self.get_motion_history(),
                                                                                              self.get_bandwidth_history(),
-                                                                                             self.bitrate_list)
+                                                                                             self.bitrate_list,
+                                                                                             self.tile_count)
+                # 构建要下载的chunk
                 self.download_chunk_now = Chunk(self.chunk_index_next, dowaload_decision, bitrate_decision,
                                                 chunk_length,
                                                 self.play_timestamp, self.buffer_length, self.config)
                 self.chunk_index_next += 1
+                # 更新当前正在下载chunk的剩余数据量为新chunk大小
                 self.remain_chunk_data = self.download_chunk_now.get_chunk_data_size()
 
+            # 纪录本次时间间隔用户的播放体验
             self.record_result_single_clock()
 
     def record_result_single_clock(self):
@@ -132,9 +176,13 @@ class NetSim():
                 [self.clock, avg_frame_bitrate, frame_bitrate_deviation, self.is_rebuffer_now, self.latency])
 
     def get_video_quality(self):
+        # 如果当前未下载任何chunk，则用户整个画面都是黑屏，因此质量和质量方差都是0
+        if len(self.chunk_list) == 0:
+            return 0, 0
+
         motion = self.motion_record[self.clock]
         # 当前视野角度+fov -> 当前全部画面采样点的uv坐标
-        _3d_polar_coord = fov_to_3d_polar_coord([float(motion.yaw), float(motion.pitch), 0], self.range_fov,
+        _3d_polar_coord = fov_to_3d_polar_coord([float(motion["yaw"]), float(motion["pitch"]), 0], self.range_fov,
                                                 self.sampling_size)
         # 当前全部画面采样点的uv坐标 -> 当前全部画面采样点的xy坐标
         pixel_coord = _3d_polar_coord_to_pixel_coord(_3d_polar_coord, "cmp", [self.video_height, self.video_width])
@@ -143,7 +191,7 @@ class NetSim():
 
         numbers = []
         frequencies = []
-        for i, count in tile_point_count_list:
+        for i, count in enumerate(tile_point_count_list):  # 只遍历索引和count值
             chunk = self.chunk_list[self.chunk_index_playing]
             tile = chunk.tile_list[i]
             # 没下载的话看到黑色像素点，默认比特率为0
@@ -173,13 +221,13 @@ class NetSim():
                     pixel_coord[1] < tile.start_pos_height + tile.tile_height)
 
             hit_coord_mask = mask_width & mask_height
-            tile_point_count_list[i] = np.sum(hit_coord_mask)
+            tile_point_count_list.append(np.sum(hit_coord_mask))
 
         return tile_point_count_list
 
     def get_motion_history(self):
         motion_history = []
-        clock_index = max(self.clock - self.motion_history_length, 0)
+        clock_index = int(max(self.clock - self.motion_history_length, 0))
         while clock_index < self.clock:
             motion_history.append(self.motion_record[clock_index])
             clock_index += self.motion_clock_interval
@@ -187,8 +235,8 @@ class NetSim():
 
     def get_bandwidth_history(self):
         bandwidth_history = []
-        second_index = max((self.clock - self.bandwidth_history_length) / 1000, 0)
-        while second_index < self.clock / 1000:
+        second_index = int(max((self.clock - self.bandwidth_history_length) / 1000, 0))
+        while second_index < int(self.clock / 1000):
             bandwidth_history.append(self.bandwidth_record[second_index])
             second_index += 1
         return bandwidth_history
@@ -197,25 +245,25 @@ class NetSim():
 class Chunk():
     def __init__(self, chunk_index, dowaload_decision, bitrate_decision, chunk_length, play_timestamp, buffer_length,
                  config):
-        self.chunk_index = chunk_index
-        self.dowaload_decision = dowaload_decision
-        self.bitrate_decision = bitrate_decision
-        self.chunk_length = chunk_length
-        self.start_timestamp = play_timestamp + buffer_length
-        self.end_timestamp = self.start_timestamp + self.chunk_length
+        self.chunk_index = chunk_index  # chunk索引
+        self.dowaload_decision = dowaload_decision  # 本chunk哪些瓦片被下载
+        self.bitrate_decision = bitrate_decision  # 本chunk每个瓦片选择的比特率等级
+        self.chunk_length = chunk_length  # 本chunk长度，单位为s
+        self.start_timestamp = play_timestamp + buffer_length  # 本chunk在原视频中的开始时间戳
+        self.end_timestamp = self.start_timestamp + self.chunk_length  # 本chunk在原视频中的结束时间戳
 
-        self.tile_width_num = config['settings']['video']["tile_width_num"]
-        self.tile_height_num = config['settings']['video']["tile_height_num"]
-        self.tile_width = config["settings"]["video"]["width"] / self.tile_width_num
-        self.tile_height = config["settings"]["video"]["height"] / self.tile_height_num
+        self.tile_width_num = config['settings']['video']["tile_width_num"]  # 横向瓦片个数
+        self.tile_height_num = config['settings']['video']["tile_height_num"]  # 竖向瓦片个数
+        self.tile_width = config["settings"]["video"]["width"] / self.tile_width_num  # 单个瓦片宽度
+        self.tile_height = config["settings"]["video"]["height"] / self.tile_height_num  # 单个瓦片高度
 
-        self.ffmpeg_path = config["ffmpeg_path"]
+        self.ffmpeg_path = config["ffmpeg_path"]  # ffmpeg路径
         self.generate_video_file_path = config["absolute_project_path"] + "e3po/source/video/" + config[
-            "group_name"] + "/" + config["settings"]["video"]["video_name"].split('.')[0] + "/tile"
+            "group_name"] + "/" + config["settings"]["video"]["video_name"].split('.')[0] + "/tile"  # 生成切片的路径
         self.video_path = config["absolute_project_path"] + "e3po/source/video/" + config["settings"]["video"][
-            "video_name"]
+            "video_name"]  # 原视频路径
 
-        self.tile_list = []
+        self.tile_list = []  # 本chunk全部tile列表
 
         self.generate_all_tile()
 
@@ -240,15 +288,15 @@ class Chunk():
 
 class Tile():
     def __init__(self, chunk_index, index, tile_width, tile_height, tile_width_num, generate_video_file_path):
-        self.chunk_index = chunk_index
-        self.index = index
-        self.tile_width = tile_width
-        self.tile_height = tile_height
-        self.tile_width_num = tile_width_num
-        self.generate_video_file_path = generate_video_file_path
+        self.chunk_index = chunk_index  # 本tile所属chunk索引
+        self.index = index  # tile索引
+        self.tile_width = tile_width  # 本tile宽度
+        self.tile_height = tile_height  # 本tile高度
+        self.tile_width_num = tile_width_num  # 横向瓦片个数
+        self.generate_video_file_path = generate_video_file_path  # 生成切片的路径
 
-        self.start_pos_width = self.index % self.tile_width_num * self.tile_width
-        self.start_pos_height = self.index / self.tile_width_num * self.tile_height
+        self.start_pos_width = self.index % self.tile_width_num * self.tile_width  # 本tile左上角横向坐标
+        self.start_pos_height = self.index / self.tile_width_num * self.tile_height  # 本tile左上角竖向坐标
 
     def generate(self, ffmpeg_path, start_timestamp, video_path, chunk_length, bitrate_decision):
         if not os.path.exists(self.generate_video_file_path):
@@ -257,8 +305,9 @@ class Tile():
         tile_file_name = self.generate_video_file_path + "/chunk" + str(self.chunk_index) + "_tile" + str(
             self.index) + ".mp4"
 
+        # 按时间轴截断、h264编码、特定比特率、按瓦片位置剪裁
         cmd = f"{ffmpeg_path} " \
-              f"-ss {start_timestamp} " \
+              f"-ss {int(start_timestamp / 1000)} " \
               f"-i {video_path} " \
               f"-t {chunk_length} " \
               f"-preset faster " \
@@ -269,8 +318,9 @@ class Tile():
               f"-loglevel error"
         os.system(cmd)
 
-        # 单位bit
+        # 直接读系统文件大小，单位bit
         self.data_size = os.path.getsize(tile_file_name) * 8
+        # 得到该瓦片比特率
         self.bitrate = self.data_size / chunk_length
 
 
@@ -283,19 +333,30 @@ class Agent():
     def __init__(self):
         pass
 
-    # 当前时刻的缓冲区长度，头部转角历史纪录，带宽历史纪录，比特率可选等级
-    def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_list):
+    # 根据当前时刻的缓冲区长度、头部转角历史纪录、带宽历史纪录、比特率可选等级，做出决策包括下载哪些瓦片、每个瓦片选择哪个比特率等级、chunk长度
+    def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_list, tile_count):
+        pass
+
+    # 下载第一个chunk的决策，无任何先验信息
+    def make_first_decision(self, tile_count):
         pass
 
 
 class LowestBitrateAgent(Agent):
     def __init__(self):
-        pass
+        super().__init__()
 
     # 所有瓦片均下载，所有瓦片均选择最低比特率，chunk长度为2
-    def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_list):
-        dowaload_decision = [True] * len(tile_list)
-        bitrate_decision = [0] * len(tile_list)
+    def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count):
+        dowaload_decision = [True] * tile_count
+        bitrate_decision = [0] * tile_count
+        chunk_length = 2
+        return dowaload_decision, bitrate_decision, chunk_length
+
+    # 所有瓦片均下载，所有瓦片均选择最低比特率，chunk长度为2
+    def make_first_decision(self, tile_count):
+        dowaload_decision = [True] * tile_count
+        bitrate_decision = [0] * tile_count
         chunk_length = 2
         return dowaload_decision, bitrate_decision, chunk_length
 
@@ -303,8 +364,5 @@ class LowestBitrateAgent(Agent):
 if __name__ == '__main__':
     get_logger().info('[simulation] start')
     sim = Sim()
-    chunk = Chunk(0, [True] * 24, [100] * 24, 6, 0, 0,
-                  sim.config)
-    chunk.get_chunk_data_size()
-
+    sim.simulation()
     get_logger().info('[simulation] end')

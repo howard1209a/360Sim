@@ -1,23 +1,26 @@
-absolute_project_path: /Users/howard1209a/Desktop/codes/e3po/
-ffmpeg_path: /opt/homebrew/bin/ffmpeg
-group_name: dynamic_chunk
+absolute_project_path: /Users/howard1209a/Desktop/codes/e3po/ # 项目绝对路径
+ffmpeg_path: /opt/homebrew/bin/ffmpeg # ffmpeg可执行文件路径
+group_name: dynamic_chunk # 测试组名
 settings:
   video: # 原视频必须是2*3布局的cmp格式
-    video_duration: 10 # 视频长度 单位秒
+    video_duration: 60 # 视频长度，单位秒，不需要填视频总长度，填需要播放多长即可，这里填的长度需要小于视野角度总长度以及网络带宽总长度
     video_name: dd.mp4 # 直播视频名称
     height: 960 # 视频高度
     width: 1440 # 视频宽度
-    bitrate_list: [] # 比特率列表
     tile_width_num: 6 # 横向瓦片个数，需为3的倍数，比如单面分2*2瓦片，则此处为6
     tile_height_num: 4 # 竖向瓦片个数，需为2的倍数，比如单面分2*2瓦片，则此处为4
   motion:
     motion_file: release_video_1_motion_1.txt # 视野角度文件
-    motion_frequency: 100 # 视野采样率
+    motion_frequency: 100 # 视野采样率，需与视野角度文件对应
     range_fov: [ 89, 89 ] # fov，单位是度，[竖向,横向]
   network:
-    network_trace_file: aa # 网络带宽文件
+    network_trace_file: report_car_0008.txt # 网络带宽文件
   algorithm:
+    bitrate_list: [ 20,50,100 ] # 比特率列表，单位kbps
     abr_strategy: dynamic_chunk # abr策略选择
+    motion_history_length: 2000 # abr算法决策时所依据的历史视野角度长度，单位为ms
+    bandwidth_history_length: 4000 # abr算法决策时所依据的历史带宽长度，单位为ms
+
 
 
 
