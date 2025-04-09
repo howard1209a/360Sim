@@ -2,6 +2,7 @@ import csv
 import os
 
 import numpy as np
+import random
 
 from e3po import get_opt, get_logger, read_video_json, pre_processing_client_log
 from e3po.decision.base_decision import BaseDecision
@@ -95,7 +96,8 @@ class NetSim():
         # 仿真结果参数
         self.record_file_path = config["absolute_project_path"] + "e3po/result/" + config[
             "group_name"] + "/result.csv"  # 结果文件输出路径
-        self.metric_list = ["clock", "avg_frame_bitrate", "frame_bitrate_deviation", "is_rebuffer",
+        self.metric_list = ["clock", "avg_frame_bitrate", "frame_bitrate_deviation", "black_ratio_in_view",
+                            "is_rebuffer",
                             "latency"]  # 需要纪录的指标列表
 
     def start_watch(self):
@@ -171,14 +173,15 @@ class NetSim():
     def record_result_single_clock(self):
         with open(self.record_file_path, mode='a', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
-            avg_frame_bitrate, frame_bitrate_deviation = self.get_video_quality()
+            avg_frame_bitrate, frame_bitrate_deviation, black_ratio_in_view = self.get_video_quality()
             writer.writerow(
-                [self.clock, avg_frame_bitrate, frame_bitrate_deviation, self.is_rebuffer_now, self.latency])
+                [self.clock, avg_frame_bitrate, frame_bitrate_deviation, black_ratio_in_view, self.is_rebuffer_now,
+                 self.latency])
 
     def get_video_quality(self):
-        # 如果当前未下载任何chunk，则用户整个画面都是黑屏，因此质量和质量方差都是0
+        # 如果当前未下载任何chunk，则用户整个画面都是黑屏，因此质量和质量方差都是0，视野内黑边比例为1
         if len(self.chunk_list) == 0:
-            return 0, 0
+            return 0, 0, 0
 
         motion = self.motion_record[self.clock]
         # 当前视野角度+fov -> 当前全部画面采样点的uv坐标
@@ -191,12 +194,14 @@ class NetSim():
 
         numbers = []
         frequencies = []
+        black_point_count_in_view = 0
         for i, count in enumerate(tile_point_count_list):  # 只遍历索引和count值
             chunk = self.chunk_list[self.chunk_index_playing]
             tile = chunk.tile_list[i]
             # 没下载的话看到黑色像素点，默认比特率为0
             if not chunk.dowaload_decision[i]:
                 numbers.append(0)
+                black_point_count_in_view += count
             else:
                 numbers.append(tile.bitrate)
             frequencies.append(count)
@@ -206,8 +211,9 @@ class NetSim():
         avg_frame_bitrate = bitrate_sum / total_count
         frame_bitrate_deviation = sum(
             [((num - avg_frame_bitrate) ** 2) * freq for num, freq in zip(numbers, frequencies)]) / total_count
+        black_ratio_in_view = black_point_count_in_view / total_count
 
-        return avg_frame_bitrate, frame_bitrate_deviation
+        return avg_frame_bitrate, frame_bitrate_deviation, black_ratio_in_view
 
     def pixel_coord_to_tile_point_count_list(self, pixel_coord):
         chunk = self.chunk_list[self.chunk_index_playing]
@@ -356,6 +362,7 @@ class LowestBitrateAgent(Agent):
     # 所有瓦片均下载，所有瓦片均选择最低比特率，chunk长度为2
     def make_first_decision(self, tile_count):
         dowaload_decision = [True] * tile_count
+        # dowaload_decision = [random.choice([True, False]) for _ in range(tile_count)]
         bitrate_decision = [0] * tile_count
         chunk_length = 2
         return dowaload_decision, bitrate_decision, chunk_length
