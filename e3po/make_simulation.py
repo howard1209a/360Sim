@@ -4,7 +4,11 @@ import os
 import numpy as np
 import random
 
+from tqdm import tqdm
+
 from e3po import get_opt, get_logger, read_video_json, pre_processing_client_log
+from e3po.agent.adaptive_bitrate_agent import AdaptiveBitrateAgent
+from e3po.agent.lowest_bitrate_agent import LowestBitrateAgent
 from e3po.decision.base_decision import BaseDecision
 import os.path as osp
 import yaml
@@ -44,6 +48,7 @@ class Sim():
     def load_bandwidth_record(self):
         network_file_path = self.config["absolute_project_path"] + "e3po/source/network_trace/" + \
                             self.config["settings"]["network"]["network_trace_file"]  # 结果文件输出路径
+        # 网络吞吐量单位是字节
         self.bandwidth_record = []
 
         # 打开文件并读取每一行
@@ -65,7 +70,7 @@ class NetSim():
         self.bitrate_list = config["settings"]["algorithm"]["bitrate_list"]  # 多比特率分级，从小到大，单位kbps
 
         # 网络模拟参数
-        self.bandwidth_record = bandwidth_record  # 带宽纪录，采样率为1
+        self.bandwidth_record = bandwidth_record  # 带宽纪录，采样率为1，单位字节
         self.motion_record = motion_record  # 视野角度纪录
         self.motion_clock_rate = config["settings"]["motion"]["motion_frequency"]  # 视野角度纪录采样率，需与视野角度纪录对应
         self.motion_clock = motion_clock  # 视频长度内的视野角度时间戳
@@ -85,7 +90,7 @@ class NetSim():
             "tile_height_num"]  # 画面tile总数
 
         # 播放器参数
-        self.agent = LowestBitrateAgent()  # abr策略智能体
+        self.agent = None  # abr策略智能体
         self.buffer_length = 0  # 当前缓冲区长度，单位ms
         self.is_rebuffer_now = False  # 当前是否正在卡顿
         self.play_timestamp = 0  # 当前的播放时间戳
@@ -95,10 +100,21 @@ class NetSim():
 
         # 仿真结果参数
         self.record_file_path = config["absolute_project_path"] + "e3po/result/" + config[
-            "group_name"] + "/result.csv"  # 结果文件输出路径
+            "group_name"] + "/" + self.config["settings"]["algorithm"]["abr_strategy"] + ".csv"  # 结果文件输出路径
         self.metric_list = ["clock", "avg_frame_bitrate", "frame_bitrate_deviation", "black_ratio_in_view",
                             "is_rebuffer",
                             "latency"]  # 需要纪录的指标列表
+
+        self.load_agent()
+
+    def load_agent(self):
+        abr_strategy = self.config["settings"]["algorithm"]["abr_strategy"]
+        if abr_strategy == "LowestBitrateAgent":
+            self.agent = LowestBitrateAgent()
+        elif abr_strategy == "AdaptiveBitrateAgent":
+            self.agent = AdaptiveBitrateAgent()
+        else:
+            self.agent = LowestBitrateAgent()
 
     def start_watch(self):
         if os.path.exists(self.record_file_path):
@@ -108,14 +124,16 @@ class NetSim():
             writer.writerow(self.metric_list)
 
         # 决策第一个chunk，无先验信息
-        dowaload_decision, bitrate_decision, chunk_length = self.agent.make_first_decision(self.tile_count)
+        dowaload_decision, bitrate_decision, chunk_length = self.agent.make_first_decision(self.bitrate_list,
+                                                                                           self.tile_count)
         self.download_chunk_now = Chunk(0, dowaload_decision, bitrate_decision,
                                         chunk_length,
                                         self.play_timestamp, self.buffer_length, self.config)
         self.chunk_index_next = 1
+        # 单位bit
         self.remain_chunk_data = self.download_chunk_now.get_chunk_data_size()
 
-        for clock in self.motion_clock:
+        for clock in tqdm(self.motion_clock):
             self.clock = clock
 
             # 如果当前已经有正在播放的chunk，
@@ -137,8 +155,8 @@ class NetSim():
                 self.buffer_length -= self.motion_clock_interval  # buffer长度缩减单个时间间隔
                 self.is_rebuffer_now = False  # 未处于卡顿状态
 
-            # 本次时间间隔所能消耗的带宽
-            bandwidth_in_interval = self.bandwidth_record[int(self.clock / 1000)] / self.motion_clock_rate
+            # 本次时间间隔所能消耗的带宽，单位bit
+            bandwidth_in_interval = self.bandwidth_record[int(self.clock / 1000)] * 8 / self.motion_clock_rate
             if bandwidth_in_interval < self.remain_chunk_data:  # 当前正在下载chunk的剩余数据量大于本次时间间隔所能消耗的带宽，本次不能下载完一个chunk
                 self.remain_chunk_data -= bandwidth_in_interval  # 扣减当前正在下载chunk的剩余数据量
             else:  # 本次下载下来了一个chunk
@@ -158,7 +176,7 @@ class NetSim():
                                                                                              self.get_motion_history(),
                                                                                              self.get_bandwidth_history(),
                                                                                              self.bitrate_list,
-                                                                                             self.tile_count)
+                                                                                             self.tile_count, self)
                 # 构建要下载的chunk
                 self.download_chunk_now = Chunk(self.chunk_index_next, dowaload_decision, bitrate_decision,
                                                 chunk_length,
@@ -184,13 +202,8 @@ class NetSim():
             return 0, 0, 0
 
         motion = self.motion_record[self.clock]
-        # 当前视野角度+fov -> 当前全部画面采样点的uv坐标
-        _3d_polar_coord = fov_to_3d_polar_coord([float(motion["yaw"]), float(motion["pitch"]), 0], self.range_fov,
-                                                self.sampling_size)
-        # 当前全部画面采样点的uv坐标 -> 当前全部画面采样点的xy坐标
-        pixel_coord = _3d_polar_coord_to_pixel_coord(_3d_polar_coord, "cmp", [self.video_height, self.video_width])
-        # 当前全部画面采样点的xy坐标 -> 每个瓦片内落了多少个点
-        tile_point_count_list = self.pixel_coord_to_tile_point_count_list(pixel_coord)
+        tile_point_count_list = self.get_point_distribution(float(motion["yaw"]), float(motion["pitch"]),
+                                                            self.range_fov, self.sampling_size)
 
         numbers = []
         frequencies = []
@@ -214,6 +227,16 @@ class NetSim():
         black_ratio_in_view = black_point_count_in_view / total_count
 
         return avg_frame_bitrate, frame_bitrate_deviation, black_ratio_in_view
+
+    def get_point_distribution(self, yaw, pitch, range_fov, sampling_size):
+        # 当前视野角度+fov -> 当前全部画面采样点的uv坐标
+        _3d_polar_coord = fov_to_3d_polar_coord([yaw, pitch, 0], range_fov, sampling_size)
+        # 当前全部画面采样点的uv坐标 -> 当前全部画面采样点的xy坐标
+        pixel_coord = _3d_polar_coord_to_pixel_coord(_3d_polar_coord, "cmp", [self.video_height, self.video_width])
+        # 当前全部画面采样点的xy坐标 -> 每个瓦片内落了多少个点
+        tile_point_count_list = self.pixel_coord_to_tile_point_count_list(pixel_coord)
+
+        return tile_point_count_list
 
     def pixel_coord_to_tile_point_count_list(self, pixel_coord):
         chunk = self.chunk_list[self.chunk_index_playing]
@@ -333,39 +356,6 @@ class Tile():
 def downloaded(self, clock, buffer_length):
     self.start_clock = clock + buffer_length
     self.end_clock = self.start_clock + self.chunk_length
-
-
-class Agent():
-    def __init__(self):
-        pass
-
-    # 根据当前时刻的缓冲区长度、头部转角历史纪录、带宽历史纪录、比特率可选等级，做出决策包括下载哪些瓦片、每个瓦片选择哪个比特率等级、chunk长度
-    def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_list, tile_count):
-        pass
-
-    # 下载第一个chunk的决策，无任何先验信息
-    def make_first_decision(self, tile_count):
-        pass
-
-
-class LowestBitrateAgent(Agent):
-    def __init__(self):
-        super().__init__()
-
-    # 所有瓦片均下载，所有瓦片均选择最低比特率，chunk长度为2
-    def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count):
-        dowaload_decision = [True] * tile_count
-        bitrate_decision = [0] * tile_count
-        chunk_length = 2
-        return dowaload_decision, bitrate_decision, chunk_length
-
-    # 所有瓦片均下载，所有瓦片均选择最低比特率，chunk长度为2
-    def make_first_decision(self, tile_count):
-        dowaload_decision = [True] * tile_count
-        # dowaload_decision = [random.choice([True, False]) for _ in range(tile_count)]
-        bitrate_decision = [0] * tile_count
-        chunk_length = 2
-        return dowaload_decision, bitrate_decision, chunk_length
 
 
 if __name__ == '__main__':

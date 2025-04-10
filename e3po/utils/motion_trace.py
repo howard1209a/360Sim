@@ -19,6 +19,7 @@
 
 from collections import OrderedDict
 import os
+import numpy as np
 
 
 def pre_processing_client_log(opt):
@@ -95,7 +96,8 @@ def read_client_log(client_log_path, interval, client_log_user_index):
                     scale = 4
                 else:
                     scale = 2
-                client_record[i * interval] = {'yaw': float(line_yaw[i]), 'pitch': float(line_pitch[i]), 'roll': 0, 'scale': scale}
+                client_record[i * interval] = {'yaw': float(line_yaw[i]), 'pitch': float(line_pitch[i]), 'roll': 0,
+                                               'scale': scale}
 
     return client_record
 
@@ -153,3 +155,26 @@ def frame_interpolation(client_record, interval, video_duration):
             ts_tmp += interval
 
     return result_client_record
+
+
+# 根据历史视野和视野采样间隔（ms），预测predict_range（ms）之后的视野落点，采用最小二乘法
+def predict_motion(motion_history, interval, predict_range):
+    n = len(motion_history)
+    t = np.array([i * interval for i in range(n)])
+
+    # 提取 yaw 和 pitch 列表
+    yaw = np.array([point['yaw'] for point in motion_history])
+    pitch = np.array([point['pitch'] for point in motion_history])
+
+    # 最小二乘法拟合一次函数：yaw = a*t + b
+    yaw_coeffs = np.polyfit(t, yaw, deg=1)
+    pitch_coeffs = np.polyfit(t, pitch, deg=1)
+
+    # 要预测的时间点（相对于最后一个点）
+    t_future = t[-1] + predict_range
+
+    # 用拟合出来的系数进行预测
+    yaw_pred = np.polyval(yaw_coeffs, t_future)
+    pitch_pred = np.polyval(pitch_coeffs, t_future)
+
+    return yaw_pred, pitch_pred
