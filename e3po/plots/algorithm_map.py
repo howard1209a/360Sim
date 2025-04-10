@@ -6,6 +6,7 @@ csv_files = {
     "运动预测的视域动态传输方案+EOV": "MotionPredictionEOVAgent.csv",
     "最大内容可见性保障策略": "ContentEnsureAgent.csv",
     "基于Buffer的Chunk调度": "BufferChunkAgent.csv",
+    "Vegas": "VegasAgent.csv"
 }
 
 base_dir = "/Users/howard1209a/Desktop/codes/E3PO/e3po/result/dynamic_chunk/"

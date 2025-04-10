@@ -13,6 +13,7 @@ from e3po.agent.content_ensure_agent import ContentEnsureAgent
 from e3po.agent.lowest_bitrate_agent import LowestBitrateAgent
 from e3po.agent.motion_prediction_agent import MotionPredictionAgent
 from e3po.agent.motion_prediction_eov_agent import MotionPredictionEOVAgent
+from e3po.agent.vegas_agent import VegasAgent
 from e3po.decision.base_decision import BaseDecision
 import os.path as osp
 import yaml
@@ -110,6 +111,7 @@ class NetSim():
         self.metric_list = ["clock", "avg_frame_bitrate", "frame_bitrate_deviation", "black_ratio_in_view",
                             "is_rebuffer",
                             "latency", "download_data_in_interval"]  # 需要纪录的指标列表
+        self.record_result_list = []
 
         self.load_agent()
 
@@ -127,6 +129,8 @@ class NetSim():
             self.agent = ContentEnsureAgent()
         elif abr_strategy == "BufferChunkAgent":
             self.agent = BufferChunkAgent()
+        elif abr_strategy == "VegasAgent":
+            self.agent = VegasAgent()
 
     def start_watch(self):
         if os.path.exists(self.record_file_path):
@@ -140,7 +144,7 @@ class NetSim():
                                                                                            self.tile_count)
         self.download_chunk_now = Chunk(0, dowaload_decision, bitrate_decision,
                                         chunk_length,
-                                        self.play_timestamp, self.buffer_length, self.config)
+                                        self.play_timestamp, self.buffer_length, 0, self.config)
         self.chunk_index_next = 1
         # 单位bit
         self.remain_chunk_data = self.download_chunk_now.get_chunk_data_size()
@@ -183,6 +187,8 @@ class NetSim():
                 if len(self.chunk_list) == 0:
                     self.chunk_index_playing = 0
 
+                # 记录chunk下载结束时间戳
+                self.download_chunk_now.finish_download(self.clock)
                 # 本次下载下来的chunk加入已下载chunk列表
                 self.chunk_list.append(self.download_chunk_now)
                 # 填充buffer长度
@@ -204,7 +210,7 @@ class NetSim():
                     # 构建要下载的chunk
                     self.download_chunk_now = Chunk(self.chunk_index_next, dowaload_decision, bitrate_decision,
                                                     chunk_length,
-                                                    self.play_timestamp, self.buffer_length, self.config)
+                                                    self.play_timestamp, self.buffer_length, self.clock, self.config)
                     self.chunk_index_next += 1
                     # 更新当前正在下载chunk的剩余数据量为新chunk大小
                     self.remain_chunk_data = self.download_chunk_now.get_chunk_data_size()
@@ -219,6 +225,13 @@ class NetSim():
             writer.writerow(
                 [self.clock, avg_frame_bitrate, frame_bitrate_deviation, black_ratio_in_view, self.is_rebuffer_now,
                  self.latency, download_data_in_interval])
+            self.record_result_list.append({self.metric_list[0]: self.clock,
+                                            self.metric_list[1]: avg_frame_bitrate,
+                                            self.metric_list[2]: frame_bitrate_deviation,
+                                            self.metric_list[3]: black_ratio_in_view,
+                                            self.metric_list[4]: self.is_rebuffer_now,
+                                            self.metric_list[5]: self.latency,
+                                            self.metric_list[6]: download_data_in_interval})
 
     def get_video_quality(self):
         # 如果当前未下载任何chunk，则用户整个画面都是黑屏，因此质量和质量方差都是0，视野内黑边比例为1
@@ -297,13 +310,15 @@ class NetSim():
 
 class Chunk():
     def __init__(self, chunk_index, dowaload_decision, bitrate_decision, chunk_length, play_timestamp, buffer_length,
-                 config):
+                 start_download_clock, config):
         self.chunk_index = chunk_index  # chunk索引
         self.dowaload_decision = dowaload_decision  # 本chunk哪些瓦片被下载
         self.bitrate_decision = bitrate_decision  # 本chunk每个瓦片选择的比特率等级
         self.chunk_length = chunk_length  # 本chunk长度，单位为s
         self.start_timestamp = play_timestamp + buffer_length  # 本chunk在原视频中的开始时间戳
         self.end_timestamp = self.start_timestamp + self.chunk_length  # 本chunk在原视频中的结束时间戳
+        self.start_download_clock = start_download_clock
+        self.end_download_clock = None
 
         self.tile_width_num = config['settings']['video']["tile_width_num"]  # 横向瓦片个数
         self.tile_height_num = config['settings']['video']["tile_height_num"]  # 竖向瓦片个数
@@ -337,6 +352,9 @@ class Chunk():
             chunk_data_size += self.tile_list[i].data_size
 
         return chunk_data_size
+
+    def finish_download(self, end_download_clock):
+        self.end_download_clock = end_download_clock
 
 
 class Tile():
