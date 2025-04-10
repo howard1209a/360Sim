@@ -3,7 +3,7 @@ ffmpeg_path: /opt/homebrew/bin/ffmpeg # ffmpeg可执行文件路径
 group_name: dynamic_chunk # 测试组名
 settings:
   video: # 原视频必须是2*3布局的cmp格式
-    video_duration: 60 # 视频长度，单位秒，不需要填视频总长度，填需要播放多长即可，这里填的长度需要小于视野角度总长度以及网络带宽总长度
+    video_duration: 20 # 视频长度，单位秒，不需要填视频总长度，填需要播放多长即可，这里填的长度需要小于视野角度总长度以及网络带宽总长度
     video_name: video_4.mp4 # 直播视频名称
     height: 960 # 视频高度
     width: 1440 # 视频宽度
@@ -16,8 +16,8 @@ settings:
   network:
     network_trace_file: report_car_0008.txt # 网络带宽文件
   algorithm:
-    bitrate_list: [ 50,100 ] # 比特率列表，单位kbps
-    abr_strategy: AdaptiveBitrateAgent # abr策略选择
+    bitrate_list: [ 1200,2400 ] # 比特率列表，单位kbps
+    abr_strategy: BufferChunkAgent # abr策略选择
     motion_history_length: 2000 # abr算法决策时所依据的历史视野角度长度，单位为ms
     bandwidth_history_length: 4000 # abr算法决策时所依据的历史带宽长度，单位为ms
 

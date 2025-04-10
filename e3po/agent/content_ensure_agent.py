@@ -24,8 +24,8 @@ class ContentEnsureAgent(Agent):
     # bitrate_list单位是kbps
     def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count, netSim):
         predicted_bandwidth = self.predict_bandwidth(bandwidth_history) * 8
-        motion = predict_motion(motion_history, netSim.motion_clock_interval, 1000)
-        tile_point_count_list = netSim.get_point_distribution(motion.yaw, motion.pitch, self.eov, [50, 50])
+        yaw, pitch = predict_motion(motion_history, netSim.motion_clock_interval, 1000)
+        tile_point_count_list = netSim.get_point_distribution(yaw, pitch, self.eov, [50, 50])
 
         # 所有eov内的瓦片索引
         in_eov_tile = [i for i, x in enumerate(tile_point_count_list) if x > 0]

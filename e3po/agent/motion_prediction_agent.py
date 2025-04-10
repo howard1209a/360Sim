@@ -23,8 +23,8 @@ class MotionPredictionAgent(Agent):
     # bandwidth_history单位字节
     # bitrate_list单位是kbps
     def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count, netSim):
-        motion = predict_motion(motion_history, netSim.motion_clock_interval, 1000)
-        tile_point_count_list = netSim.get_point_distribution(motion.yaw, motion.pitch, self.eov, [50, 50])
+        yaw, pitch = predict_motion(motion_history, netSim.motion_clock_interval, 1000)
+        tile_point_count_list = netSim.get_point_distribution(yaw, pitch, self.eov, [50, 50])
         download_decision = [True if count > 0 else False for count in tile_point_count_list]
         bitrate_decision = [bitrate_list[1]] * tile_count
         return download_decision, bitrate_decision, self.chunk_length

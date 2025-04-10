@@ -8,7 +8,11 @@ from tqdm import tqdm
 
 from e3po import get_opt, get_logger, read_video_json, pre_processing_client_log
 from e3po.agent.adaptive_bitrate_agent import AdaptiveBitrateAgent
+from e3po.agent.buffer_chunk_agent import BufferChunkAgent
+from e3po.agent.content_ensure_agent import ContentEnsureAgent
 from e3po.agent.lowest_bitrate_agent import LowestBitrateAgent
+from e3po.agent.motion_prediction_agent import MotionPredictionAgent
+from e3po.agent.motion_prediction_eov_agent import MotionPredictionEOVAgent
 from e3po.decision.base_decision import BaseDecision
 import os.path as osp
 import yaml
@@ -88,6 +92,7 @@ class NetSim():
         self.video_height = config["settings"]["video"]["height"]  # 视频高度
         self.tile_count = config["settings"]["video"]["tile_width_num"] * config["settings"]["video"][
             "tile_height_num"]  # 画面tile总数
+        self.video_length = config["settings"]["video"]["video_duration"]  # 视频长度，单位s
 
         # 播放器参数
         self.agent = None  # abr策略智能体
@@ -97,13 +102,14 @@ class NetSim():
         self.range_fov = config["settings"]["motion"]["range_fov"]  # fov，单位是度，[竖向,横向]
         self.sampling_size = [50, 50]  # 视野内画面点采样率
         self.latency = 0  # 当前直播延迟
+        self.isDownloadEnd = False  # 当前直播视频下载是否结束
 
         # 仿真结果参数
         self.record_file_path = config["absolute_project_path"] + "e3po/result/" + config[
             "group_name"] + "/" + self.config["settings"]["algorithm"]["abr_strategy"] + ".csv"  # 结果文件输出路径
         self.metric_list = ["clock", "avg_frame_bitrate", "frame_bitrate_deviation", "black_ratio_in_view",
                             "is_rebuffer",
-                            "latency"]  # 需要纪录的指标列表
+                            "latency", "download_data_in_interval"]  # 需要纪录的指标列表
 
         self.load_agent()
 
@@ -113,8 +119,14 @@ class NetSim():
             self.agent = LowestBitrateAgent()
         elif abr_strategy == "AdaptiveBitrateAgent":
             self.agent = AdaptiveBitrateAgent()
-        else:
-            self.agent = LowestBitrateAgent()
+        elif abr_strategy == "MotionPredictionAgent":
+            self.agent = MotionPredictionAgent()
+        elif abr_strategy == "MotionPredictionEOVAgent":
+            self.agent = MotionPredictionEOVAgent()
+        elif abr_strategy == "ContentEnsureAgent":
+            self.agent = ContentEnsureAgent()
+        elif abr_strategy == "BufferChunkAgent":
+            self.agent = BufferChunkAgent()
 
     def start_watch(self):
         if os.path.exists(self.record_file_path):
@@ -155,11 +167,18 @@ class NetSim():
                 self.buffer_length -= self.motion_clock_interval  # buffer长度缩减单个时间间隔
                 self.is_rebuffer_now = False  # 未处于卡顿状态
 
+            if self.isDownloadEnd:
+                # 纪录本次时间间隔用户的播放体验
+                self.record_result_single_clock(0)
+                continue
+
             # 本次时间间隔所能消耗的带宽，单位bit
             bandwidth_in_interval = self.bandwidth_record[int(self.clock / 1000)] * 8 / self.motion_clock_rate
             if bandwidth_in_interval < self.remain_chunk_data:  # 当前正在下载chunk的剩余数据量大于本次时间间隔所能消耗的带宽，本次不能下载完一个chunk
+                download_data_in_interval = bandwidth_in_interval
                 self.remain_chunk_data -= bandwidth_in_interval  # 扣减当前正在下载chunk的剩余数据量
             else:  # 本次下载下来了一个chunk
+                download_data_in_interval = self.remain_chunk_data
                 # 如果本次下载下来的chunk为第一个chunk，则正式开始播放
                 if len(self.chunk_list) == 0:
                     self.chunk_index_playing = 0
@@ -177,24 +196,29 @@ class NetSim():
                                                                                              self.get_bandwidth_history(),
                                                                                              self.bitrate_list,
                                                                                              self.tile_count, self)
-                # 构建要下载的chunk
-                self.download_chunk_now = Chunk(self.chunk_index_next, dowaload_decision, bitrate_decision,
-                                                chunk_length,
-                                                self.play_timestamp, self.buffer_length, self.config)
-                self.chunk_index_next += 1
-                # 更新当前正在下载chunk的剩余数据量为新chunk大小
-                self.remain_chunk_data = self.download_chunk_now.get_chunk_data_size()
+
+                # 如果当前播放时间戳+buffer长度已经>=视频总长度，则下载结束接下来只需要观看
+                if self.clock + self.buffer_length >= self.video_length * 1000:
+                    self.isDownloadEnd = True
+                else:
+                    # 构建要下载的chunk
+                    self.download_chunk_now = Chunk(self.chunk_index_next, dowaload_decision, bitrate_decision,
+                                                    chunk_length,
+                                                    self.play_timestamp, self.buffer_length, self.config)
+                    self.chunk_index_next += 1
+                    # 更新当前正在下载chunk的剩余数据量为新chunk大小
+                    self.remain_chunk_data = self.download_chunk_now.get_chunk_data_size()
 
             # 纪录本次时间间隔用户的播放体验
-            self.record_result_single_clock()
+            self.record_result_single_clock(download_data_in_interval)
 
-    def record_result_single_clock(self):
+    def record_result_single_clock(self, download_data_in_interval):
         with open(self.record_file_path, mode='a', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
             avg_frame_bitrate, frame_bitrate_deviation, black_ratio_in_view = self.get_video_quality()
             writer.writerow(
                 [self.clock, avg_frame_bitrate, frame_bitrate_deviation, black_ratio_in_view, self.is_rebuffer_now,
-                 self.latency])
+                 self.latency, download_data_in_interval])
 
     def get_video_quality(self):
         # 如果当前未下载任何chunk，则用户整个画面都是黑屏，因此质量和质量方差都是0，视野内黑边比例为1
@@ -349,7 +373,7 @@ class Tile():
 
         # 直接读系统文件大小，单位bit
         self.data_size = os.path.getsize(tile_file_name) * 8
-        # 得到该瓦片比特率
+        # 得到该瓦片比特率，单位bps
         self.bitrate = self.data_size / chunk_length
 
 
