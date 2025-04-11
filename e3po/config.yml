@@ -17,7 +17,7 @@ settings:
     network_trace_file: report_car_0008.txt # 网络带宽文件
   algorithm:
     bitrate_list: [ 1200,2400 ] # 比特率列表，单位kbps
-    abr_strategy: VegasAgent # abr策略选择
+    abr_strategy: ContentEnsureAgent # abr策略选择
     motion_history_length: 2000 # abr算法决策时所依据的历史视野角度长度，单位为ms
     bandwidth_history_length: 4000 # abr算法决策时所依据的历史带宽长度，单位为ms
 

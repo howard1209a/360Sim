@@ -14,7 +14,7 @@ class VegasAgent(Agent):
         super().__init__()
         self.m = 89  # m是x方向、横向、经度，单位是度
         self.n = 89  # n是y方向、竖向、纬度，单位是度
-        self.eta = 1.0  # 控制l_stall和l_black在L效用中的加权比例
+        self.eta = 0.5  # 控制l_stall和l_black在L效用中的加权比例
         self.k_lower_bound = 0
         self.k_upper_bound = max((180 - self.n) / 2.0, (360 - self.m) / 2.0)
         self.l_lower_bound = 0.5
@@ -32,6 +32,12 @@ class VegasAgent(Agent):
 
         self.bit2MB = 8388608.0
 
+        self.anneal_tmax = 50.0
+        self.anneal_tmin = 1e-5
+        self.anneal_steps = 5000
+
+        self.s_t_redundancy = 0.9
+
     def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count, netSim):
         # lazy loading
         if self.bandwidth_mean is None or self.bandwidth_variance is None:
@@ -39,7 +45,7 @@ class VegasAgent(Agent):
         if self.a_x_mean is None or self.a_x_std is None or self.a_y_mean is None or self.a_y_std is None:
             self.load_a_model(netSim)
 
-        yaw, pitch = predict_motion(motion_history, netSim.motion_clock_interval, 1000)
+        yaw, pitch = predict_motion(motion_history, netSim.motion_clock_interval, buffer_length)
 
         if len(self.data_list) == 0:
             self.init_data_set(netSim, yaw, pitch, bitrate_list[len(bitrate_list) - 1] * 1000, buffer_length,
@@ -52,7 +58,8 @@ class VegasAgent(Agent):
         init_state = [(self.l_lower_bound + self.l_upper_bound) / 2.0, 22.5]
         problem = AnnealerAgent(init_state, self, netSim, yaw, pitch, bitrate_list[len(bitrate_list) - 1] * 1000,
                                 buffer_length, motion_history)
-        problem.set_schedule({'tmax': 10.0, 'tmin': 1e-4, 'steps': 50, 'updates': 10})
+        problem.set_schedule(
+            {'tmax': self.anneal_tmax, 'tmin': self.anneal_tmin, 'steps': self.anneal_steps, 'updates': 0})
         state, _ = problem.anneal()
         decision_l = state[0]
         decision_k = state[1]
@@ -141,6 +148,8 @@ class VegasAgent(Agent):
         tile_transmit_count = sum(1 for x in tile_point_count_list if x > 0)
         # s_t单位为MB
         s_t = tile_transmit_count * l * bitrate / self.bit2MB
+        # 留一些s_t的数据冗余防止卡顿
+        s_t = s_t * self.s_t_redundancy
         b_t = buffer_length
         # 由于l_stall公式存在ln()函数，因此需要兜底判断
         if float(s_t) / b_t - self.bandwidth_mean + self.bandwidth_variance <= 0:

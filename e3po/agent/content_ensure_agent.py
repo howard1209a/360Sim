@@ -10,7 +10,7 @@ class ContentEnsureAgent(Agent):
     def __init__(self):
         super().__init__()
         self.chunk_length = 4
-        self.eov = [89, 89]
+        self.eov = [40, 40]
 
     # 带宽：考虑带宽情况，采用滑动窗口预测带宽
     # 视野预测：根据历史信息预测下一秒视野落点，采用最小二乘法
@@ -24,7 +24,7 @@ class ContentEnsureAgent(Agent):
     # bitrate_list单位是kbps
     def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count, netSim):
         predicted_bandwidth = self.predict_bandwidth(bandwidth_history) * 8
-        yaw, pitch = predict_motion(motion_history, netSim.motion_clock_interval, 1000)
+        yaw, pitch = predict_motion(motion_history, netSim.motion_clock_interval, buffer_length)
         tile_point_count_list = netSim.get_point_distribution(yaw, pitch, self.eov, [50, 50])
 
         # 所有eov内的瓦片索引
@@ -33,6 +33,8 @@ class ContentEnsureAgent(Agent):
         out_eov_tile = [i for i, x in enumerate(tile_point_count_list) if x == 0]
         # 可用数据量等于buffer长度*预测带宽
         remain_data_size = int(float(buffer_length) / 1000 * predicted_bandwidth)
+        # 留下一些冗余量防止卡顿
+        remain_data_size = 0.7 * remain_data_size
         download_decision = [False] * tile_count
         bitrate_decision = [bitrate_list[0]] * tile_count
         # 初始所有视野内的瓦片下载低比特率，视野外不下载
