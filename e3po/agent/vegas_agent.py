@@ -14,7 +14,7 @@ class VegasAgent(Agent):
         super().__init__()
         self.m = 89  # m是x方向、横向、经度，单位是度
         self.n = 89  # n是y方向、竖向、纬度，单位是度
-        self.eta = 0.5  # 控制l_stall和l_black在L效用中的加权比例
+        self.eta = 1.5  # 控制l_stall和l_black在L效用中的加权比例
         self.k_lower_bound = 0
         self.k_upper_bound = max((180 - self.n) / 2.0, (360 - self.m) / 2.0)
         self.l_lower_bound = 0.5
@@ -32,11 +32,14 @@ class VegasAgent(Agent):
 
         self.bit2MB = 8388608.0
 
-        self.anneal_tmax = 50.0
-        self.anneal_tmin = 1e-5
-        self.anneal_steps = 5000
+        self.anneal_tmax = 100.0
+        self.anneal_tmin = 1e-6
+        self.anneal_steps = 10000
 
-        self.s_t_redundancy = 0.9
+        self.s_t_redundancy = 1.0
+
+        self.v2lk_list = []
+        self.v2lk_file_path = "/Users/howard1209a/Desktop/codes/E3PO/e3po/result/dynamic_chunk/vega_v_kl.txt"
 
     def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count, netSim):
         # lazy loading
@@ -77,7 +80,19 @@ class VegasAgent(Agent):
         # 滚动更新，删除列表中最旧的数据
         del self.data_list[0]
 
+        # 记录一下当前速度v到k、l决策结果的映射关系
+        now_pos = motion_history[len(motion_history) - 1]
+        pre_pos = motion_history[len(motion_history) - 101]
+        self.v2lk_list.append(
+            (abs(now_pos["yaw"] - pre_pos["yaw"]), abs(now_pos["pitch"] - pre_pos["pitch"]), decision_k, decision_l))
+
         return download_decision, bitrate_decision, decision_l
+
+    def record_v2lk_list(self):
+        # 结束后记录chunk列表中每个chunk的数据量和下载耗时
+        with open(self.v2lk_file_path, 'a') as f:
+            for v2lk in self.v2lk_list:
+                f.write(f"{v2lk[0]} {v2lk[1]} {v2lk[2]} {v2lk[3]}\n")
 
     def compute_real_f(self, netSim):
         last_chunk = netSim.chunk_list[len(netSim.chunk_list) - 1]

@@ -20,11 +20,11 @@ class BufferChunkAgent(ContentEnsureAgent):
         download_decision, bitrate_decision, _ = super().make_decision(buffer_length, motion_history, bandwidth_history,
                                                                        bitrate_list, tile_count, netSim)
         if buffer_length <= 4000:
-            chunk_length = 1
-        elif buffer_length > 4000 and buffer_length <= 8000:
-            chunk_length = 2
-        else:
             chunk_length = 4
+        elif buffer_length > 4000 and buffer_length <= 8000:
+            chunk_length = 6
+        else:
+            chunk_length = 8
         return download_decision, bitrate_decision, chunk_length
 
     # 所有瓦片均下载，所有瓦片均选择最低比特率，chunk长度为4

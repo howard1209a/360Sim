@@ -17,7 +17,6 @@
 # along with this program; if not, see:
 #    <https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html>
 
-import add_e3po_to_environment
 from e3po.decision import build_decision
 from e3po.utils import get_opt, get_logger
 

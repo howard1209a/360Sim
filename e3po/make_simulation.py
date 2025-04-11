@@ -218,6 +218,15 @@ class NetSim():
             # 纪录本次时间间隔用户的播放体验
             self.record_result_single_clock(download_data_in_interval)
 
+        # 结束后记录chunk列表中每个chunk的数据量和下载耗时
+        with open(self.config["absolute_project_path"] + "e3po/result/" + self.config["group_name"] + "/" +
+                  self.config["settings"]["algorithm"]["abr_strategy"] + "_chunk_data.csv", 'a') as f:
+            for chunk in self.chunk_list:
+                f.write(f"{chunk.get_chunk_data_size()} {chunk.end_download_clock - chunk.start_download_clock}\n")
+        # 如果当前策略是vega，则额外记录决策v到kl映射
+        if isinstance(self.agent, VegasAgent):
+            self.agent.record_v2lk_list()
+
     def record_result_single_clock(self, download_data_in_interval):
         with open(self.record_file_path, mode='a', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)

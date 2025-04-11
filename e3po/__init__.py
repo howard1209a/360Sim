@@ -23,4 +23,3 @@ from .decision import *
 from .evaluation import *
 from .make_preprocessing import *
 from .make_decision import *
-from .make_evaluation import *

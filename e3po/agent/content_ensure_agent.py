@@ -24,7 +24,7 @@ class ContentEnsureAgent(Agent):
     # bitrate_list单位是kbps
     def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count, netSim):
         predicted_bandwidth = self.predict_bandwidth(bandwidth_history) * 8
-        yaw, pitch = predict_motion(motion_history, netSim.motion_clock_interval, buffer_length)
+        yaw, pitch = predict_motion(motion_history, netSim.motion_clock_interval, buffer_length + 8000)
         tile_point_count_list = netSim.get_point_distribution(yaw, pitch, self.eov, [50, 50])
 
         # 所有eov内的瓦片索引
@@ -50,13 +50,13 @@ class ContentEnsureAgent(Agent):
             remain_data_size -= (bitrate_list[1] - bitrate_list[0]) * 1000 * self.chunk_length
             if remain_data_size <= 0:
                 return download_decision, bitrate_decision, self.chunk_length
-        # 如果还有数据量，则额外下载视野外的低比特率瓦片
-        for index in out_eov_tile:
-            download_decision[index] = True
-            bitrate_decision[index] = bitrate_list[0]
-            remain_data_size -= bitrate_list[0] * 1000 * self.chunk_length
-            if remain_data_size <= 0:
-                return download_decision, bitrate_decision, self.chunk_length
+        # # 如果还有数据量，则额外下载视野外的低比特率瓦片
+        # for index in out_eov_tile:
+        #     download_decision[index] = True
+        #     bitrate_decision[index] = bitrate_list[0]
+        #     remain_data_size -= bitrate_list[0] * 1000 * self.chunk_length
+        #     if remain_data_size <= 0:
+        #         return download_decision, bitrate_decision, self.chunk_length
         # 如果还有数据量，则额外下载视野外的高比特率瓦片
         for index in out_eov_tile:
             bitrate_decision[index] = bitrate_list[1]
