@@ -20,10 +20,11 @@ class AdaptiveBitrateAgent(Agent):
     # bandwidth_history单位字节
     # bitrate_list单位是kbps
     def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count, netSim):
-        motion = motion_history[len(motion_history) - 1]
-        tile_point_count_list = netSim.get_point_distribution(float(motion["yaw"]), float(motion["pitch"]), [89, 89],
+        motion = motion_history[len(motion_history) - 100]
+        tile_point_count_list = netSim.get_point_distribution(float(motion["yaw"]), float(motion["pitch"]), [20, 20],
                                                               [50, 50])
         dowaload_decision = [True] * tile_count
+        # bitrate_decision = [bitrate_list[0]] * tile_count
         bitrate_decision = [bitrate_list[1] if count > 0 else bitrate_list[0] for count in tile_point_count_list]
         return dowaload_decision, bitrate_decision, self.chunk_length
 

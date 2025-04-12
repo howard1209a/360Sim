@@ -16,8 +16,8 @@ settings:
   network:
     network_trace_file: report_car_0008.txt # 网络带宽文件
   algorithm:
-    bitrate_list: [ 1400,2800 ] # 比特率列表，单位kbps
-    abr_strategy: MotionPredictionEOVAgent # abr策略选择
+    bitrate_list: [ 1800,3600 ] # 比特率列表，单位kbps
+    abr_strategy: MotionPredictionAgent # abr策略选择
     motion_history_length: 2000 # abr算法决策时所依据的历史视野角度长度，单位为ms
     bandwidth_history_length: 4000 # abr算法决策时所依据的历史带宽长度，单位为ms
 

@@ -19,9 +19,9 @@ class BufferChunkAgent(ContentEnsureAgent):
     def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count, netSim):
         download_decision, bitrate_decision, _ = super().make_decision(buffer_length, motion_history, bandwidth_history,
                                                                        bitrate_list, tile_count, netSim)
-        if buffer_length <= 4000:
+        if buffer_length <= 2000:
             chunk_length = 4
-        elif buffer_length > 4000 and buffer_length <= 8000:
+        elif buffer_length > 2000 and buffer_length <= 4000:
             chunk_length = 6
         else:
             chunk_length = 8

@@ -14,7 +14,7 @@ class VegasAgent(Agent):
         super().__init__()
         self.m = 89  # m是x方向、横向、经度，单位是度
         self.n = 89  # n是y方向、竖向、纬度，单位是度
-        self.eta = 1.5  # 控制l_stall和l_black在L效用中的加权比例
+        self.eta = 0.8  # 控制l_stall和l_black在L效用中的加权比例
         self.k_lower_bound = 0
         self.k_upper_bound = max((180 - self.n) / 2.0, (360 - self.m) / 2.0)
         self.l_lower_bound = 0.5
@@ -28,15 +28,15 @@ class VegasAgent(Agent):
         self.a_y_std = None
 
         self.data_list = []  # 滚动更新的历史决策data列表
-        self.data_list_size = 4  # 历史决策data列表长度
+        self.data_list_size = 8  # 历史决策data列表长度
 
         self.bit2MB = 8388608.0
 
-        self.anneal_tmax = 100.0
+        self.anneal_tmax = 50.0
         self.anneal_tmin = 1e-6
-        self.anneal_steps = 10000
+        self.anneal_steps = 5000
 
-        self.s_t_redundancy = 1.0
+        self.s_t_redundancy = 0.9
 
         self.v2lk_list = []
         self.v2lk_file_path = "/Users/howard1209a/Desktop/codes/E3PO/e3po/result/dynamic_chunk/vega_v_kl.txt"
@@ -148,7 +148,7 @@ class VegasAgent(Agent):
         for i in range(1, len(pitch_velocity)):
             pitch_acceleration.append(pitch_velocity[i] - pitch_velocity[i - 1])
             yaw_acceleration.append(yaw_velocity[i] - yaw_velocity[i - 1])
-        # 使用正态分布拟合数据
+        # 使用正态分布拟合数据 a_x_mean=1.6 a_x_std=24
         self.a_x_mean, self.a_x_std = stats.norm.fit(np.array(yaw_acceleration))
         self.a_y_mean, self.a_y_std = stats.norm.fit(np.array(pitch_acceleration))
 

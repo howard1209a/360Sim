@@ -72,7 +72,6 @@ def format_draw_box(data, my_pal, y_label, pic_name):
 
     plt.xlabel('')
     plt.ylabel(y_label)
-    plt.savefig(pic_name + ".png", dpi=500)
     plt.show()
 
 
@@ -145,8 +144,5 @@ def format_draw_histogram(labels, data, x_label_name, y_label_name, y_bottom):
                 fontsize=12,
                 rotation=0
             )
-
-    # 保存图像
-    plt.savefig('./info.jpg', dpi=400, bbox_inches='tight')
 
     plt.show()
