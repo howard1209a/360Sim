@@ -15,4 +15,4 @@ for algo_name, file_path in csv_files.items():
     else:
         print(f"文件不存在：{file_path}")
 
-format_draw_histogram([""], [avg_black_ratios], "", "Black Area Ratio(%)", 0)
+format_draw_histogram([""], [avg_black_ratios], "", "Black Area Ratio", 0)
