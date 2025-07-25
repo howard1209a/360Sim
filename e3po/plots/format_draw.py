@@ -114,37 +114,37 @@ def format_draw_histogram(labels, data, x_label_name, y_label_name, y_bottom):
     offsets = [i * bar_spacing * width for i in offsets]
 
     # 绘制柱子
-    ax.bar(x + offsets[0], [row[0] for row in data], width, label='Vaser',
+    ax.bar(x + offsets[0], [row[0] for row in data], width, label='5g',
            edgecolor='lightgoldenrodyellow', color='#B24475', linewidth=.8, hatch='x')
 
-    ax.bar(x + offsets[1], [row[1] for row in data], width, label='VAAC',
+    ax.bar(x + offsets[1], [row[1] for row in data], width, label='wifi',
            edgecolor='#FAEBD7', color='#864CBC', linewidth=.8, hatch='o')
 
     ax.bar(x + offsets[2], [row[2] for row in data], width, label='VAAC-E',
            edgecolor='#FAEBD7', color='#386688', linewidth=.8, hatch='/')
 
-    ax.bar(x + offsets[3], [row[3] for row in data], width, label='PW',
-           edgecolor='#FAEBD7', color='#845D1C', linewidth=.8, hatch='+')
-
-    ax.bar(x + offsets[4], [row[4] for row in data], width, label='BCD',
-           edgecolor='#FAEBD7', color='#8A543C', linewidth=.8, hatch='\\')
-
-    ax.bar(x + offsets[5], [row[5] for row in data], width, label='Vega',
-           edgecolor='#FAEBD7', color='#3D7747', linewidth=.8, hatch='//')
+    # ax.bar(x + offsets[3], [row[3] for row in data], width, label='PW',
+    #        edgecolor='#FAEBD7', color='#845D1C', linewidth=.8, hatch='+')
+    #
+    # ax.bar(x + offsets[4], [row[4] for row in data], width, label='BCD',
+    #        edgecolor='#FAEBD7', color='#8A543C', linewidth=.8, hatch='\\')
+    #
+    # ax.bar(x + offsets[5], [row[5] for row in data], width, label='Vega',
+    #        edgecolor='#FAEBD7', color='#3D7747', linewidth=.8, hatch='//')
 
     algorithms = ['Vaser', 'VAAC', 'VAAC-E', 'PW', 'BCD', 'Vega']
 
-    for i in range(len(x)):  # 遍历每个x位置（也就是每组柱子）
-        for j in range(6):  # 每组里的6个柱子
-            ax.text(
-                x[i] + offsets[j],
-                y_bottom - (max_value * 0.05),  # 让文字在柱子下方一点点
-                algorithms[j],
-                ha='center',
-                va='top',
-                fontsize=16,
-                rotation=0
-            )
+    # for i in range(len(x)):  # 遍历每个x位置（也就是每组柱子）
+    #     for j in range(6):  # 每组里的6个柱子
+    #         ax.text(
+    #             x[i] + offsets[j],
+    #             y_bottom - (max_value * 0.05),  # 让文字在柱子下方一点点
+    #             algorithms[j],
+    #             ha='center',
+    #             va='top',
+    #             fontsize=16,
+    #             rotation=0
+    #         )
 
     # 保存图像
     plt.savefig('./info.png', dpi=300, bbox_inches='tight')

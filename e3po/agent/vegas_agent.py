@@ -12,8 +12,8 @@ from simanneal import Annealer
 class VegasAgent(Agent):
     def __init__(self):
         super().__init__()
-        self.m = 89  # m是x方向、横向、经度，单位是度
-        self.n = 89  # n是y方向、竖向、纬度，单位是度
+        self.m = 90  # m是x方向、横向、经度，单位是度
+        self.n = 90  # n是y方向、竖向、纬度，单位是度
         self.eta = 0.8  # 控制l_stall和l_black在L效用中的加权比例
         self.k_lower_bound = 0
         self.k_upper_bound = max((180 - self.n) / 2.0, (360 - self.m) / 2.0)
@@ -28,7 +28,7 @@ class VegasAgent(Agent):
         self.a_y_std = None
 
         self.data_list = []  # 滚动更新的历史决策data列表
-        self.data_list_size = 8  # 历史决策data列表长度
+        self.data_list_size = 4  # 历史决策data列表长度
 
         self.bit2MB = 8388608.0
 
@@ -39,7 +39,7 @@ class VegasAgent(Agent):
         self.s_t_redundancy = 0.9
 
         self.v2lk_list = []
-        self.v2lk_file_path = "/Users/howard1209a/Desktop/codes/E3PO/e3po/result/dynamic_chunk/vega_v_kl.txt"
+        self.v2lk_file_path = r"D:\codes\360Sim\e3po\result\dynamic_chunk\vega_v_kl.txt"
 
     def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count, netSim):
         # lazy loading
@@ -268,6 +268,9 @@ class VegasAgent(Agent):
             for y_index, y_data in enumerate(self.data_list):
                 K_matrix[x_index, y_index] = self.compute_K(x_data.k, x_data.l, y_data.k, y_data.l)
 
+        # 正则化：添加小的正则化项
+        K_matrix += np.eye(K_matrix.shape[0]) * 1e-6  # 1e-6 是一个非常小的数
+
         E_list = []
         for data in self.data_list:
             E_list.append(data.f - data.L)
@@ -347,3 +350,4 @@ class AnnealerAgent(Annealer):
         sigma = self.vegas_agent.compute_sigma(k, l)
 
         return L + mu - 1 * math.sqrt(beta) * sigma
+        # return mu - 1 * math.sqrt(beta) * sigma

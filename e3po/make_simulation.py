@@ -18,7 +18,9 @@ from e3po.decision.base_decision import BaseDecision
 import os.path as osp
 import yaml
 import json
+from utils.cpu_cycle import rdtsc
 
+from e3po.utils.cpu_cycle import rdtsc
 from e3po.utils.projection_utilities import fov_to_3d_polar_coord, _3d_polar_coord_to_pixel_coord
 from utils.motion_trace import read_client_log
 
@@ -149,6 +151,8 @@ class NetSim():
         # 单位bit
         self.remain_chunk_data = self.download_chunk_now.get_chunk_data_size()
 
+        make_decision_cpu_cycles = 0
+
         for clock in tqdm(self.motion_clock):
             self.clock = clock
 
@@ -197,11 +201,13 @@ class NetSim():
                 if self.is_rebuffer_now:
                     self.is_rebuffer_now = False
                 # 立即开始下载下一个chunk，做abr决策
+                start_cycles = rdtsc()
                 dowaload_decision, bitrate_decision, chunk_length = self.agent.make_decision(self.buffer_length,
                                                                                              self.get_motion_history(),
                                                                                              self.get_bandwidth_history(),
                                                                                              self.bitrate_list,
                                                                                              self.tile_count, self)
+                make_decision_cpu_cycles += rdtsc() - start_cycles
 
                 # 如果当前播放时间戳+buffer长度已经>=视频总长度，则下载结束接下来只需要观看
                 if self.clock + self.buffer_length >= self.video_length * 1000:
@@ -226,6 +232,8 @@ class NetSim():
         # 如果当前策略是vega，则额外记录决策v到kl映射
         if isinstance(self.agent, VegasAgent):
             self.agent.record_v2lk_list()
+
+        print("策略消耗的cpu cycle: " + str(make_decision_cpu_cycles))
 
     def record_result_single_clock(self, download_data_in_interval):
         with open(self.record_file_path, mode='a', newline='', encoding='utf-8') as file:
@@ -402,6 +410,10 @@ class Tile():
         self.data_size = os.path.getsize(tile_file_name) * 8
         # 得到该瓦片比特率，单位bps
         self.bitrate = self.data_size / chunk_length
+
+        multiply = 2.0
+        self.data_size *= multiply
+        self.bitrate *= multiply
 
 
 def downloaded(self, clock, buffer_length):

@@ -3,7 +3,7 @@ from e3po.plots.format_draw import format_draw_cdf
 base_dir = "/Users/howard1209a/Desktop/codes/E3PO/e3po/result/dynamic_chunk/"
 agent_path_list = [base_dir + "AdaptiveBitrateAgent_chunk_data.csv", base_dir + "MotionPredictionAgent_chunk_data.csv",
                    base_dir + "MotionPredictionEOVAgent_chunk_data.csv", base_dir + "ContentEnsureAgent_chunk_data.csv",
-                   base_dir + "BufferChunkAgent_chunk_data.csv", base_dir + "VegasAgent_chunk_data.csv"]
+                   base_dir + "BufferChunkAgent_chunk_data.csv", base_dir + "VegasAgent_chunk_data_5g.csv"]
 
 chunk_data_size_list = []
 for agent_path in agent_path_list:
