@@ -91,6 +91,7 @@ class NetSim():
         self.chunk_index_next = 0  # 下一个要下载的chunk索引，等于len(chunk_list)
         self.remain_chunk_data = 0  # 当前正在下载的chunk的剩余未下载数据量
         self.download_chunk_now = None  # 当前正在下载的chunk
+        self.decision_list = []
 
         # 视频源参数
         self.video_width = config["settings"]["video"]["width"]  # 视频宽度
@@ -146,6 +147,8 @@ class NetSim():
         # 决策第一个chunk，无先验信息
         dowaload_decision, bitrate_decision, chunk_length = self.agent.make_first_decision(self.bitrate_list,
                                                                                            self.tile_count)
+        self.record_decison(0, dowaload_decision, bitrate_decision)
+
         self.download_chunk_now = Chunk(0, dowaload_decision, bitrate_decision,
                                         chunk_length,
                                         self.play_timestamp, self.buffer_length, 0, self.config)
@@ -209,6 +212,7 @@ class NetSim():
                                                                                              self.get_bandwidth_history(),
                                                                                              self.bitrate_list,
                                                                                              self.tile_count, self)
+                self.record_decison(clock, dowaload_decision, bitrate_decision)
                 make_decision_cpu_cycles += rdtsc() - start_cycles
 
                 # 如果当前播放时间戳+buffer长度已经>=视频总长度，则下载结束接下来只需要观看
@@ -231,6 +235,13 @@ class NetSim():
                   self.config["settings"]["algorithm"]["abr_strategy"] + "_chunk_data.csv", 'a') as f:
             for chunk in self.chunk_list:
                 f.write(f"{chunk.get_chunk_data_size()} {chunk.end_download_clock - chunk.start_download_clock}\n")
+
+
+        with open(self.config["absolute_project_path"] + "e3po/result/" + self.config["group_name"] + "/" +
+                  self.config["settings"]["algorithm"]["abr_strategy"] + "_decision_data.csv", 'a') as f:
+            for decision in self.decision_list:
+                f.write(f"{decision.clock} {decision.bitrate}\n")
+
         # 如果当前策略是vega，则额外记录决策v到kl映射
         if isinstance(self.agent, VegasAgent):
             self.agent.record_v2lk_list()
@@ -326,6 +337,13 @@ class NetSim():
             second_index += 1
         return bandwidth_history
 
+    def record_decison(self, clock, dowaload_decision, bitrate_decision):
+        bitrate = 0
+        for i in range(len(dowaload_decision)):
+            if dowaload_decision[i]:
+                bitrate += bitrate_decision[i]
+        self.decision_list.append(Decision(clock, bitrate))
+
 
 class Chunk():
     def __init__(self, chunk_index, dowaload_decision, bitrate_decision, chunk_length, play_timestamp, buffer_length,
@@ -412,11 +430,11 @@ class Tile():
         self.data_size = os.path.getsize(tile_file_name) * 8
 
         if chunk_length <= 2:
-            self.data_size *= 1.0
+            self.data_size *= 1
         elif chunk_length <= 4:
-            self.data_size *= 0.7
+            self.data_size *= 0.8
         elif chunk_length <= 6:
-            self.data_size *= 0.4
+            self.data_size *= 0.6
         else:
             raise ValueError("chunk_length error")
 
@@ -426,6 +444,12 @@ class Tile():
         multiply = 1.0
         self.data_size *= multiply
         self.bitrate *= multiply
+
+
+class Decision:
+    def __init__(self, clock, bitrate):
+        self.clock = clock
+        self.bitrate = bitrate
 
 
 def downloaded(self, clock, buffer_length):

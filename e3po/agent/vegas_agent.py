@@ -14,7 +14,7 @@ class VegasAgent(Agent):
         super().__init__()
         self.m = 90  # m是x方向、横向、经度，单位是度
         self.n = 90  # n是y方向、竖向、纬度，单位是度
-        self.eta = 5  # 控制l_stall和l_black在L效用中的加权比例 0.8
+        self.eta = 2 # 控制l_stall和l_black在L效用中的加权比例 0.8
         self.k_lower_bound = 0
         self.k_upper_bound = max((180 - self.n) / 2.0, (360 - self.m) / 2.0)
         self.l_lower_bound = 0.5
