@@ -2,12 +2,13 @@ import random
 
 from e3po.agent.agent import Agent
 from e3po.agent.content_ensure_agent import ContentEnsureAgent
+from e3po.agent.motion_prediction_agent import MotionPredictionAgent
 from e3po.utils.motion_trace import predict_motion
 from e3po.utils.projection_utilities import fov_to_3d_polar_coord, _3d_polar_coord_to_pixel_coord
 import numpy as np
 
 
-class BufferChunkAgent(ContentEnsureAgent):
+class BufferChunkAgent(MotionPredictionAgent):
     def __init__(self):
         super().__init__()
 
@@ -20,11 +21,13 @@ class BufferChunkAgent(ContentEnsureAgent):
         download_decision, bitrate_decision, _ = super().make_decision(buffer_length, motion_history, bandwidth_history,
                                                                        bitrate_list, tile_count, netSim)
         if buffer_length <= 2000:
-            chunk_length = 4
-        elif buffer_length > 2000 and buffer_length <= 4000:
-            chunk_length = 6
+            chunk_length = 1
+        elif buffer_length <= 4000:
+            chunk_length = 2
+        elif buffer_length <= 6000:
+            chunk_length = 3
         else:
-            chunk_length = 8
+            chunk_length = 4
         return download_decision, bitrate_decision, chunk_length
 
     # 所有瓦片均下载，所有瓦片均选择最低比特率，chunk长度为4

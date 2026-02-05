@@ -9,8 +9,8 @@ import numpy as np
 class ContentEnsureAgent(Agent):
     def __init__(self):
         super().__init__()
-        self.chunk_length = 4
-        self.eov = [20, 20]
+        self.chunk_length = 2
+        self.eov = [90, 90]
 
     # 带宽：考虑带宽情况，采用滑动窗口预测带宽
     # 视野预测：根据历史信息预测下一秒视野落点，采用最小二乘法
@@ -35,7 +35,7 @@ class ContentEnsureAgent(Agent):
         # 可用数据量等于buffer长度*预测带宽
         remain_data_size = int(float(buffer_length) / 1000 * predicted_bandwidth)
         # 留下一些冗余量防止卡顿
-        remain_data_size = 1.4 * remain_data_size
+        remain_data_size = 0.9 * remain_data_size # 1.4
         download_decision = [False] * tile_count
         bitrate_decision = [bitrate_list[0]] * tile_count
         # 初始所有视野内的瓦片下载低比特率，视野外不下载

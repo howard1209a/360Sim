@@ -26,6 +26,8 @@ from utils.motion_trace import read_client_log
 
 from e3po.utils.misc import generate_motion_clock
 
+bandwidth_scale_ratio = 0.5
+
 
 class Sim():
     def __init__(self):
@@ -62,7 +64,7 @@ class Sim():
         with open(network_file_path, 'r') as f:
             for line in f:
                 columns = line.strip().split()
-                self.bandwidth_record.append(float(columns[1]))
+                self.bandwidth_record.append(float(columns[1]) * bandwidth_scale_ratio)
 
 
 class NetSim():
@@ -408,10 +410,20 @@ class Tile():
 
         # 直接读系统文件大小，单位bit
         self.data_size = os.path.getsize(tile_file_name) * 8
+
+        if chunk_length <= 2:
+            self.data_size *= 1.0
+        elif chunk_length <= 4:
+            self.data_size *= 0.7
+        elif chunk_length <= 6:
+            self.data_size *= 0.4
+        else:
+            raise ValueError("chunk_length error")
+
         # 得到该瓦片比特率，单位bps
         self.bitrate = self.data_size / chunk_length
 
-        multiply = 2.0
+        multiply = 1.0
         self.data_size *= multiply
         self.bitrate *= multiply
 

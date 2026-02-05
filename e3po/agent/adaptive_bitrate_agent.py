@@ -7,7 +7,7 @@ from e3po.utils.projection_utilities import fov_to_3d_polar_coord, _3d_polar_coo
 class AdaptiveBitrateAgent(Agent):
     def __init__(self):
         super().__init__()
-        self.chunk_length = 4
+        self.chunk_length = 2
 
     # 带宽：不考虑带宽情况
     # 视野预测：不预测，直接将最新的一个motion作为视野

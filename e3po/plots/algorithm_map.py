@@ -1,12 +1,12 @@
 # 各算法对应的 CSV 文件路径（你可以改成实际路径）
-# csv_files = {
-#     "基于速率的分片式质量自适应分配策略": "AdaptiveBitrateAgent.csv",
-#     "运动预测的视域动态传输方案": "MotionPredictionAgent.csv",
-#     "运动预测的视域动态传输方案+EOV": "MotionPredictionEOVAgent.csv",
-#     "最大内容可见性保障策略": "ContentEnsureAgent.csv",
-#     "基于Buffer的Chunk调度": "BufferChunkAgent.csv",
-#     "Vegas": "VegasAgent_5g.csv"
-# }
+csv_files = {
+    "基于速率的分片式质量自适应分配策略": "AdaptiveBitrateAgent.csv",
+    "运动预测的视域动态传输方案": "MotionPredictionAgent.csv",
+    "运动预测的视域动态传输方案+EOV": "MotionPredictionEOVAgent.csv",
+    "最大内容可见性保障策略": "ContentEnsureAgent.csv",
+    "基于Buffer的Chunk调度": "BufferChunkAgent.csv",
+    "Vegas": "VegasAgent.csv"
+}
 
 # csv_files = {
 #     "Vegas_5g": "VegasAgent_5g.csv",
@@ -38,10 +38,10 @@
 #     "VegasAgent_5g_d_8": "VegasAgent_5g_d_8.csv"
 # }
 
-csv_files = {
-    "VegasAgent_5g_eov60": "VegasAgent_5g_eov60.csv",
-    "VegasAgent_5g_eov90": "VegasAgent_5g_eov90.csv",
-    "VegasAgent_5g_eov120": "VegasAgent_5g_eov120.csv"
-}
+# csv_files = {
+#     "VegasAgent_5g_eov60": "VegasAgent_5g_eov60.csv",
+#     "VegasAgent_5g_eov90": "VegasAgent_5g_eov90.csv",
+#     "VegasAgent_5g_eov120": "VegasAgent_5g_eov120.csv"
+# }
 
-base_dir = "D:\\codes\\360Sim\\e3po\\result\\dynamic_chunk_rebuttal\\"
+base_dir = "D:\\codes\\360Sim\\e3po\\result\\paper\\"

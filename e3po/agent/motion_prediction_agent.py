@@ -9,8 +9,8 @@ import numpy as np
 class MotionPredictionAgent(Agent):
     def __init__(self):
         super().__init__()
-        self.chunk_length = 4
-        self.eov = [50, 50]
+        self.chunk_length = 2
+        self.eov = [64, 64]
 
     # 带宽：不考虑带宽情况
     # 视野预测：根据历史信息预测下一秒视野落点，采用最小二乘法
@@ -23,7 +23,8 @@ class MotionPredictionAgent(Agent):
     # bandwidth_history单位字节
     # bitrate_list单位是kbps
     def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count, netSim):
-        yaw, pitch = predict_motion(motion_history, netSim.motion_clock_interval, buffer_length + 10000)
+        # yaw, pitch = predict_motion(motion_history, netSim.motion_clock_interval, buffer_length)
+        yaw, pitch = predict_motion(motion_history, netSim.motion_clock_interval, 30000)
         tile_point_count_list = netSim.get_point_distribution(yaw, pitch, self.eov, [50, 50])
         download_decision = [True if count > 0 else False for count in tile_point_count_list]
         bitrate_decision = [bitrate_list[1]] * tile_count

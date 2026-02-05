@@ -14,7 +14,7 @@ class VegasAgent(Agent):
         super().__init__()
         self.m = 90  # m是x方向、横向、经度，单位是度
         self.n = 90  # n是y方向、竖向、纬度，单位是度
-        self.eta = 5  # 控制l_stall和l_black在L效用中的加权比例 0.8
+        self.eta = 0.8  # 控制l_stall和l_black在L效用中的加权比例
         self.k_lower_bound = 0
         self.k_upper_bound = max((180 - self.n) / 2.0, (360 - self.m) / 2.0)
         self.l_lower_bound = 0.5
@@ -28,13 +28,13 @@ class VegasAgent(Agent):
         self.a_y_std = None
 
         self.data_list = []  # 滚动更新的历史决策data列表
-        self.data_list_size = 10  # 历史决策data列表长度
+        self.data_list_size = 4  # 历史决策data列表长度
 
         self.bit2MB = 8388608.0
 
         self.anneal_tmax = 50.0
         self.anneal_tmin = 1e-6
-        self.anneal_steps = 8000
+        self.anneal_steps = 5000
 
         self.s_t_redundancy = 1.0 # 0.9
 
@@ -268,7 +268,7 @@ class VegasAgent(Agent):
             for y_index, y_data in enumerate(self.data_list):
                 K_matrix[x_index, y_index] = self.compute_K(x_data.k, x_data.l, y_data.k, y_data.l)
 
-        # 正则化：添加小的正则化项确保矩阵可逆
+        # 正则化：添加小的正则化项
         K_matrix += np.eye(K_matrix.shape[0]) * 1e-6  # 1e-6 是一个非常小的数
 
         E_list = []
@@ -289,11 +289,7 @@ class VegasAgent(Agent):
             for y_index, y_data in enumerate(self.data_list):
                 K_matrix[x_index, y_index] = self.compute_K(x_data.k, x_data.l, y_data.k, y_data.l)
 
-        # 正则化：添加小的正则化项确保矩阵可逆
-        regularization = 1e-6 * np.eye(K_matrix.shape[0])
-        K_matrix_regularized = K_matrix + regularization
-
-        variance = self.compute_K(k, l, k, l) - 1 * K_array @ np.linalg.inv(K_matrix_regularized) @ K_array.T
+        variance = self.compute_K(k, l, k, l) - 1 * K_array @ np.linalg.inv(K_matrix) @ K_array.T
         if variance <= 0:
             return 0
         else:
