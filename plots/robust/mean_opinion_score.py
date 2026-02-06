@@ -100,20 +100,20 @@ def format_draw_histogram(
 
 # 运行测试
 if __name__ == "__main__":
-    labels = ['SPB-360', 'Vaser', 'VAAC', 'VAAC-E', 'PW', 'BCD']
-    data = [5.67, 11.92, 15.04, 13.71, 5.85, 7.08]
-    colors = ['#B24475', '#864CBC', '#386688', '#845D1C', '#8A543C', '#3D7747']
-    hatch_patterns = ['x', 'o', '/', '+', '\\', '//']
+    labels = ['1', '2', '3', '4', '5']
+    data = [1, 0, 3, 6, 5]
+    colors = ['#B24475', '#864CBC', '#386688', '#845D1C', '#8A543C']
+    hatch_patterns = ['x', 'o', '/', '+', '\\']
 
     format_draw_histogram(
         labels=labels,
         data=data,
-        y_label_name='卡顿次数',
-        x_label_name='',
+        y_label_name='观看用户个数',
+        x_label_name='MoS',
         y_bottom=0,
         colors=colors,
         hatch_patterns=hatch_patterns,
-        save_path='./stall_count.png',
+        save_path='./mean_opinion_score.png',
         bar_width=0.7,
         spacing=0.05,  # 进一步减小间距
         legend_loc='best'

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 # 第三列：k（单位：度）
 # 第四列：l（单位：秒）
 
-data = np.loadtxt('/Users/howard1209a/Desktop/codes/E3PO/e3po/result/dynamic_chunk/vega_v_kl.txt')
+data = np.loadtxt(r'D:\codes\360Sim\e3po\result\dynamic_chunk\vega_v_kl.txt')
 
 yaw_rad = data[:, 0]
 pitch_rad = data[:, 1]

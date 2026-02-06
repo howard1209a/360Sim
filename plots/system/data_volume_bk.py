@@ -114,32 +114,32 @@ def plot_bandwidth_cdf(data_list, colors=None, markers=None, labels=None,
 
 if __name__ == "__main__":
     SPB360_live_delay_list = [
-        float(x.split()[0]) / (8.0 * 1024 * 1024)
+        float(x.split()[2]) / (8.0 * 1024 * 1024)
         for x in open("../raw_data/chunk_data/SPB-360_chunk_data.csv", 'r').readlines()
     ]
 
     Vaser_live_delay_list = [
-        float(x.split()[0]) / (8.0 * 1024 * 1024)
+        float(x.split()[2]) / (8.0 * 1024 * 1024)
         for x in open("../raw_data/chunk_data/Vaser_chunk_data.csv", 'r').readlines()
     ]
 
     VAAC_live_delay_list = [
-        float(x.split()[0]) / (8.0 * 1024 * 1024)
+        float(x.split()[2]) / (8.0 * 1024 * 1024)
         for x in open("../raw_data/chunk_data/VAAC_chunk_data.csv", 'r').readlines()
     ]
 
     VAAC_E_live_delay_list = [
-        float(x.split()[0]) / (8.0 * 1024 * 1024)
+        float(x.split()[2]) / (8.0 * 1024 * 1024)
         for x in open("../raw_data/chunk_data/VAAC-E_chunk_data.csv", 'r').readlines()
     ]
 
     PW_live_delay_list = [
-        float(x.split()[0]) / (8.0 * 1024 * 1024)
+        float(x.split()[2]) / (8.0 * 1024 * 1024)
         for x in open("../raw_data/chunk_data/PW_chunk_data.csv", 'r').readlines()
     ]
 
     BCD_live_delay_list = [
-        float(x.split()[0]) / (8.0 * 1024 * 1024)
+        float(x.split()[2]) / (8.0 * 1024 * 1024)
         for x in open("../raw_data/chunk_data/BCD_chunk_data.csv", 'r').readlines()
     ]
 

@@ -91,7 +91,6 @@ class NetSim():
         self.chunk_index_next = 0  # 下一个要下载的chunk索引，等于len(chunk_list)
         self.remain_chunk_data = 0  # 当前正在下载的chunk的剩余未下载数据量
         self.download_chunk_now = None  # 当前正在下载的chunk
-        self.decision_list = []
 
         # 视频源参数
         self.video_width = config["settings"]["video"]["width"]  # 视频宽度
@@ -117,6 +116,8 @@ class NetSim():
                             "is_rebuffer",
                             "latency", "download_data_in_interval"]  # 需要纪录的指标列表
         self.record_result_list = []
+        self.chunk_data_file_path = self.config["absolute_project_path"] + "e3po/result/" + self.config[
+            "group_name"] + "/" + self.config["settings"]["algorithm"]["abr_strategy"] + "_chunk_data.csv"
 
         self.load_agent()
 
@@ -144,11 +145,12 @@ class NetSim():
             writer = csv.writer(file)
             writer.writerow(self.metric_list)
 
+        # if os.path.exists(self.chunk_data_file_path):
+        #     os.remove(self.chunk_data_file_path)
+
         # 决策第一个chunk，无先验信息
         dowaload_decision, bitrate_decision, chunk_length = self.agent.make_first_decision(self.bitrate_list,
                                                                                            self.tile_count)
-        self.record_decison(0, dowaload_decision, bitrate_decision)
-
         self.download_chunk_now = Chunk(0, dowaload_decision, bitrate_decision,
                                         chunk_length,
                                         self.play_timestamp, self.buffer_length, 0, self.config)
@@ -212,7 +214,6 @@ class NetSim():
                                                                                              self.get_bandwidth_history(),
                                                                                              self.bitrate_list,
                                                                                              self.tile_count, self)
-                self.record_decison(clock, dowaload_decision, bitrate_decision)
                 make_decision_cpu_cycles += rdtsc() - start_cycles
 
                 # 如果当前播放时间戳+buffer长度已经>=视频总长度，则下载结束接下来只需要观看
@@ -231,16 +232,10 @@ class NetSim():
             self.record_result_single_clock(download_data_in_interval)
 
         # 结束后记录chunk列表中每个chunk的数据量和下载耗时
-        with open(self.config["absolute_project_path"] + "e3po/result/" + self.config["group_name"] + "/" +
-                  self.config["settings"]["algorithm"]["abr_strategy"] + "_chunk_data.csv", 'a') as f:
+        with open(self.chunk_data_file_path, 'a') as f:
             for chunk in self.chunk_list:
-                f.write(f"{chunk.get_chunk_data_size()} {chunk.end_download_clock - chunk.start_download_clock}\n")
-
-
-        with open(self.config["absolute_project_path"] + "e3po/result/" + self.config["group_name"] + "/" +
-                  self.config["settings"]["algorithm"]["abr_strategy"] + "_decision_data.csv", 'a') as f:
-            for decision in self.decision_list:
-                f.write(f"{decision.clock} {decision.bitrate}\n")
+                f.write(
+                    f"{chunk.start_download_clock} {chunk.get_chunk_bitrate()} {chunk.get_chunk_data_size()} {chunk.end_download_clock - chunk.start_download_clock}\n")
 
         # 如果当前策略是vega，则额外记录决策v到kl映射
         if isinstance(self.agent, VegasAgent):
@@ -337,13 +332,6 @@ class NetSim():
             second_index += 1
         return bandwidth_history
 
-    def record_decison(self, clock, dowaload_decision, bitrate_decision):
-        bitrate = 0
-        for i in range(len(dowaload_decision)):
-            if dowaload_decision[i]:
-                bitrate += bitrate_decision[i]
-        self.decision_list.append(Decision(clock, bitrate))
-
 
 class Chunk():
     def __init__(self, chunk_index, dowaload_decision, bitrate_decision, chunk_length, play_timestamp, buffer_length,
@@ -392,6 +380,14 @@ class Chunk():
 
     def finish_download(self, end_download_clock):
         self.end_download_clock = end_download_clock
+
+    def get_chunk_bitrate(self):
+        bitrate = 0
+        for i in range(len(self.tile_list)):
+            if not self.dowaload_decision[i]:
+                continue
+            bitrate += self.tile_list[i].bitrate / 1000.0
+        return bitrate
 
 
 class Tile():
@@ -444,12 +440,6 @@ class Tile():
         multiply = 1.0
         self.data_size *= multiply
         self.bitrate *= multiply
-
-
-class Decision:
-    def __init__(self, clock, bitrate):
-        self.clock = clock
-        self.bitrate = bitrate
 
 
 def downloaded(self, clock, buffer_length):

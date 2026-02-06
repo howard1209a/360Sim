@@ -10,7 +10,7 @@ class MotionPredictionAgent(Agent):
     def __init__(self):
         super().__init__()
         self.chunk_length = 2
-        self.eov = [59, 59]
+        self.eov = [64, 64]
 
     # 带宽：不考虑带宽情况
     # 视野预测：根据历史信息预测下一秒视野落点，采用最小二乘法
