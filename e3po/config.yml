@@ -10,13 +10,13 @@ settings:
     tile_width_num: 6 # 横向瓦片个数，需为3的倍数，比如单面分2*2瓦片，则此处为6
     tile_height_num: 4 # 竖向瓦片个数，需为2的倍数，比如单面分2*2瓦片，则此处为4
   motion:
-    motion_file: /paper/video_9_u2.txt # 视野角度文件
+    motion_file: /paper/video_9_u3.txt # 视野角度文件
     motion_frequency: 100 # 视野采样率，需与视野角度文件对应
     range_fov: [ 89, 89 ] # fov，单位是度，[竖向,横向]
   network:
     network_trace_file: /paper/5g_drive.txt # 网络带宽文件
   algorithm:
     bitrate_list: [ 5000,15000 ] # 比特率列表，单位kbps
-    abr_strategy: ContentEnsureAgent # abr策略选择，AdaptiveBitrateAgent，MotionPredictionAgent，MotionPredictionEOVAgent，ContentEnsureAgent，BufferChunkAgent，VegasAgent
+    abr_strategy: AdaptiveBitrateAgent # abr策略选择，AdaptiveBitrateAgent，MotionPredictionAgent，MotionPredictionEOVAgent，ContentEnsureAgent，BufferChunkAgent，VegasAgent
     motion_history_length: 2000 # abr算法决策时所依据的历史视野角度长度，单位为ms
     bandwidth_history_length: 4000 # abr算法决策时所依据的历史带宽长度，单位为ms

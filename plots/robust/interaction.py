@@ -21,9 +21,9 @@ circle_alpha = 1  # 同心圆的透明度
 circle_linewidth = 2.5  # 同心圆的线宽（新增参数）
 
 # 4. 数据配置（三个图例/算法）
-data_algo1 = [9.45, 2, 10, 7.6]  # 5G [上,右,下,左]
-data_algo2 = [3.78, 4, 9.5, 10]  # WiFi
-data_algo3 = [7.56, 10, 4.5, 7.8]  # 4G
+data_algo1 = [10, 10, 7.3, 10]  # 高移动性 [上,右,下,左]
+data_algo2 = [5, 7.2, 8.5, 8.8]  # 中移动性
+data_algo3 = [5, 4, 10, 7]  #低移动性
 
 # 5. 每个轴要标注的位置和标签
 axis_labels = [
@@ -198,7 +198,7 @@ ax.fill(angles_closed, norm_data_algo3_closed,
 # 算法1
 ax.plot(angles_closed, norm_data_algo1_closed,
         linewidth=line_width,
-        label='5G',
+        label='高移动性',
         color=colors[0],
         linestyle=line_styles[0],
         zorder=5)  # 最高的zorder，确保线条在最上面
@@ -206,7 +206,7 @@ ax.plot(angles_closed, norm_data_algo1_closed,
 # 算法2
 ax.plot(angles_closed, norm_data_algo2_closed,
         linewidth=line_width,
-        label='WiFi',
+        label='中移动性',
         color=colors[1],
         linestyle=line_styles[1],
         zorder=5)
@@ -214,7 +214,7 @@ ax.plot(angles_closed, norm_data_algo2_closed,
 # 算法3
 ax.plot(angles_closed, norm_data_algo3_closed,
         linewidth=line_width,
-        label='4G',
+        label='低移动性',
         color=colors[2],
         linestyle=line_styles[2],
         zorder=5)
@@ -249,4 +249,4 @@ plt.tight_layout()
 # 显示图形
 plt.show()
 
-fig.savefig('network_environment.png', dpi=300, bbox_inches='tight')
+fig.savefig('interaction.png', dpi=300, bbox_inches='tight')

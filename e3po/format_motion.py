@@ -6,7 +6,7 @@ video_index = 4
 
 for user_index in range(1, 21):
     # 读取 CSV 文件
-    input_path = os.path.join(r"D:\codes\360Sim\e3po\source\motion_trace\paper\v1_video_13_vr_data_20220326T184411.csv")
+    input_path = os.path.join(r"D:\codes\360Sim\e3po\source\motion_trace\paper\v1_video_13_vr_data_20220525T201707.csv")
     df = pd.read_csv(input_path)
 
     # 将 AdjustedTime 列转换为 datetime 类型
@@ -34,7 +34,7 @@ for user_index in range(1, 21):
     df_resampled.index = np.arange(len(df_resampled))  # 设置索引从 0 开始
 
     # 输出TXT文件
-    txt_output_path = os.path.join(r"D:\codes\360Sim\e3po\source\motion_trace\paper\video_9_u2.txt")
+    txt_output_path = os.path.join(r"D:\codes\360Sim\e3po\source\motion_trace\paper\video_9_u3.txt")
 
     # 提取所有行的纬度（y轴角度）和经度（x轴角度）
     latitude_degrees = df_resampled['Pose_Angle_y'].values

@@ -21,9 +21,10 @@ circle_alpha = 1  # 同心圆的透明度
 circle_linewidth = 2.5  # 同心圆的线宽（新增参数）
 
 # 4. 数据配置（三个图例/算法）
-data_algo1 = [9.45, 2, 10, 7.6]  # 5G [上,右,下,左]
-data_algo2 = [3.78, 4, 9.5, 10]  # WiFi
-data_algo3 = [7.56, 10, 4.5, 7.8]  # 4G
+data_algo1 = [10, 10, 7, 10]  # d=1 [上,右,下,左]
+data_algo2 = [8, 7.7, 8.2, 6.3]  # d=2
+data_algo3 = [4, 3.8, 8.4, 3.5]  # d=4
+data_algo4 = [2, 1.2, 10, 2.2]  # d=8
 
 # 5. 每个轴要标注的位置和标签
 axis_labels = [
@@ -34,8 +35,8 @@ axis_labels = [
 ]
 
 # 6. 图例颜色配置
-colors = plt.cm.tab10(np.linspace(0, 1, 3))
-line_styles = ['-', '-', '-']  # 线条样式
+colors = np.vstack([plt.cm.tab10(np.linspace(0, 1, 3)), plt.cm.tab10([6, 7, 8])])
+line_styles = ['-', '-', '-','-']  # 线条样式
 line_width = 2.5  # 线条宽度
 fill_alpha = 0.15  # 降低填充透明度，避免覆盖
 
@@ -55,6 +56,7 @@ legend_bbox_to_anchor = (1.15, 1.0)  # 图例相对于图的偏移量（减小x�
 data_algo1_closed = data_algo1 + [data_algo1[0]]
 data_algo2_closed = data_algo2 + [data_algo2[0]]
 data_algo3_closed = data_algo3 + [data_algo3[0]]
+data_algo4_closed = data_algo4 + [data_algo4[0]]
 
 # 计算每个角度的位置（四个指标均匀分布）
 angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
@@ -74,10 +76,12 @@ def normalize_data(data, max_vals):
 norm_data_algo1 = normalize_data(data_algo1, max_values)
 norm_data_algo2 = normalize_data(data_algo2, max_values)
 norm_data_algo3 = normalize_data(data_algo3, max_values)
+norm_data_algo4 = normalize_data(data_algo4, max_values)
 
 norm_data_algo1_closed = norm_data_algo1 + [norm_data_algo1[0]]
 norm_data_algo2_closed = norm_data_algo2 + [norm_data_algo2[0]]
 norm_data_algo3_closed = norm_data_algo3 + [norm_data_algo3[0]]
+norm_data_algo4_closed = norm_data_algo4 + [norm_data_algo4[0]]
 
 # =================== 创建图形 ===================
 fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection='polar'))
@@ -194,11 +198,16 @@ ax.fill(angles_closed, norm_data_algo3_closed,
         color=colors[2],
         zorder=4)
 
+ax.fill(angles_closed, norm_data_algo4_closed,
+        alpha=fill_alpha,
+        color=colors[3],
+        zorder=4)
+
 # 然后绘制线条（在最上层，确保清晰可见）
 # 算法1
 ax.plot(angles_closed, norm_data_algo1_closed,
         linewidth=line_width,
-        label='5G',
+        label='d=1',
         color=colors[0],
         linestyle=line_styles[0],
         zorder=5)  # 最高的zorder，确保线条在最上面
@@ -206,7 +215,7 @@ ax.plot(angles_closed, norm_data_algo1_closed,
 # 算法2
 ax.plot(angles_closed, norm_data_algo2_closed,
         linewidth=line_width,
-        label='WiFi',
+        label='d=2',
         color=colors[1],
         linestyle=line_styles[1],
         zorder=5)
@@ -214,9 +223,17 @@ ax.plot(angles_closed, norm_data_algo2_closed,
 # 算法3
 ax.plot(angles_closed, norm_data_algo3_closed,
         linewidth=line_width,
-        label='4G',
+        label='d=4',
         color=colors[2],
         linestyle=line_styles[2],
+        zorder=5)
+
+# 算法4
+ax.plot(angles_closed, norm_data_algo4_closed,
+        linewidth=line_width,
+        label='d=8',
+        color=colors[3],
+        linestyle=line_styles[3],
         zorder=5)
 
 # =================== 隐藏不必要的元素 ===================
@@ -249,4 +266,4 @@ plt.tight_layout()
 # 显示图形
 plt.show()
 
-fig.savefig('network_environment.png', dpi=300, bbox_inches='tight')
+fig.savefig('window.png', dpi=300, bbox_inches='tight')

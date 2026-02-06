@@ -304,13 +304,13 @@ if __name__ == "__main__":
         title='',
         show_grid=True,
         save_path='data_volume_uniform_markers.png',
-        num_markers=45,
+        num_markers=30,
         figure_size=(12, 8),
         line_width=2.5,
         alpha=0.85,
         marker_size=14,
         dpi=300,
-        show_full_curve=True  # 是否显示原始完整CDF曲线作为背景
+        show_full_curve=False  # 是否显示原始完整CDF曲线作为背景
     )
 
     plt.show()
