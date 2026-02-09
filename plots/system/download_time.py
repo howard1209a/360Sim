@@ -303,7 +303,7 @@ if __name__ == "__main__":
         labels=custom_labels,
         title='',
         show_grid=True,
-        save_path='data_volume_uniform_markers.png',
+        save_path='download_time.png',
         num_markers=30,
         figure_size=(12, 8),
         line_width=2.5,

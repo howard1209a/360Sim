@@ -19,14 +19,14 @@ def format_draw_histogram(
         algorithms=None,
         save_path='./info.png',
         font_family='SimHei',
-        font_size=16,
-        figsize=(10, 6),
+        font_size=10.5,  # 改为10.5磅
+        figsize=(4, 2.5),
         bar_width=0.8,  # 增大柱子宽度
         spacing=0.2,  # 新增：柱子间距参数，默认0.2
         colors=None,
         edge_colors=None,
         hatch_patterns=None,
-        legend_fontsize=14,
+        legend_fontsize=10.5,  # 图例字体也改为10.5磅
         legend_loc='upper right',
         tick_rotation=0,
         show_chinese=True
@@ -41,8 +41,8 @@ def format_draw_histogram(
     rcParams.update({'font.size': font_size})
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ax.set_xlabel(x_label_name, fontsize=font_size + 2)
-    ax.set_ylabel(y_label_name, fontsize=font_size + 2)
+    ax.set_xlabel(x_label_name, fontsize=font_size + 2)  # 12.5磅
+    ax.set_ylabel(y_label_name, fontsize=font_size + 2)  # 12.5磅
 
     # 计算横坐标位置：通过调整间距缩短柱子间距离
     n = len(labels)
@@ -88,7 +88,7 @@ def format_draw_histogram(
             ax.text(x[i], y_bottom - (max(data) * 0.05),
                     algorithms[i % len(algorithms)],
                     ha='center', va='top',
-                    fontsize=font_size - 2)
+                    fontsize=font_size - 2)  # 8.5磅
 
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
