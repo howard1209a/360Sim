@@ -2,103 +2,36 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# 设置全局字体
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei']
-plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams["font.family"] = ["Times New Roman", "SimSun"]
 
 
-def plot_lines(data, x_range=(0, 59), y1_range=(0, 124000), y2_range=(0, 100),
-               figure_size=(7, 5), title='', xlabel='时间(s)',
-               y1_label='数据速率(kbps)', y2_label='码率选择', colors=None,
-               line_styles=None, markers=None, line_width=2.5,
-               show_grid=True, show_legend=True, legend_labels=None,
-               legend_pos='upper right', marker_size=12, save_path=None, dpi=300):
-    """
-    绘制折线图（双y轴）
+def plot_lines(
+        data,
+        x_range,
+        y_left_range,
+        y_right_range,
+        x_label_name,
+        y_left_label_name,
+        y_right_label_name,
+        colors,
+        line_styles,
+        markers,
+        legend_labels,
+        legend_loc,
+        save_path,
+        figsize=(4, 2.5),
+        legend_fontsize=8.5,
+        font_size=10.5,
+        line_width=1,
+        marker_size=3,
+        dpi=300,
+):
+    fig, ax1 = plt.subplots(figsize=figsize)
 
-    参数:
-    ----------
-    data : list
-        数据列表，包含两条线的数据
-
-    x_range : tuple
-        x轴范围 (x_min, x_max)
-
-    y1_range : tuple
-        左y轴范围 (y_min, y_max)
-
-    y2_range : tuple
-        右y轴范围 (y_min, y_max)
-
-    figure_size : tuple
-        图形尺寸
-
-    title, xlabel : str
-        标题和x轴标签
-
-    y1_label : str
-        左y轴标签
-
-    y2_label : str
-        右y轴标签
-
-    colors : list, 可选
-        颜色列表
-
-    line_styles : list, 可选
-        线条样式列表，如['-', '--']
-
-    markers : list, 可选
-        标记点样式列表，如['o', 's']
-
-    line_width : float
-        线条宽度
-
-    show_grid : bool
-        是否显示网格
-
-    show_legend : bool
-        是否显示图例
-
-    legend_labels : list, 可选
-        图例标签
-
-    legend_pos : str
-        图例位置
-
-    marker_size : float
-        标记点大小
-
-    save_path : str, 可选
-        保存路径
-
-    dpi : int
-        图片分辨率
-    """
-
-    # 设置默认值
-    if colors is None:
-        colors = plt.cm.tab10(np.linspace(0, 1, 2))
-
-    if line_styles is None:
-        line_styles = ['-', '--']
-
-    if markers is None:
-        markers = ['o', 's']
-
-    if legend_labels is None:
-        legend_labels = ['线路1', '线路2']
-
-    # 创建图形和左y轴
-    fig, ax1 = plt.subplots(figsize=figure_size)
-
-    # 创建右y轴
     ax2 = ax1.twinx()
 
-    # 生成时间轴
     x_time = np.arange(x_range[0], x_range[1] + 1)
 
-    # 绘制第一条线（左y轴）
     line1_data = data[0][:len(x_time)]
     line1 = ax1.plot(x_time, line1_data,
                      linestyle=line_styles[0],
@@ -108,7 +41,6 @@ def plot_lines(data, x_range=(0, 59), y1_range=(0, 124000), y2_range=(0, 100),
                      linewidth=line_width,
                      label=legend_labels[0])
 
-    # 绘制第二条线（右y轴）
     line2_data = data[1][:len(x_time)]
     line2 = ax2.plot(x_time, line2_data,
                      linestyle=line_styles[1],
@@ -118,51 +50,23 @@ def plot_lines(data, x_range=(0, 59), y1_range=(0, 124000), y2_range=(0, 100),
                      linewidth=line_width,
                      label=legend_labels[1])
 
-    # 设置坐标轴范围
     ax1.set_xlim(x_range)
-    ax1.set_ylim(y1_range)
-    ax2.set_ylim(y2_range)
+    ax1.set_ylim(y_left_range)
+    ax2.set_ylim(y_right_range)
 
-    # 设置标题和标签（全部黑色）
-    ax1.set_title(title, fontsize=16, fontweight='bold', pad=15)
-    ax1.set_xlabel(xlabel, fontsize=12, color='black')
-    ax1.set_ylabel(y1_label, fontsize=12, color='black')
-    ax2.set_ylabel(y2_label, fontsize=12, color='black')
+    ax1.set_xlabel(x_label_name, fontsize=font_size)
+    ax1.set_ylabel(y_left_label_name, fontsize=font_size)
+    ax2.set_ylabel(y_right_label_name, fontsize=font_size)
 
-    # 设置刻度颜色为黑色
-    ax1.tick_params(axis='x', colors='black')
-    ax1.tick_params(axis='y', colors='black')
-    ax2.tick_params(axis='y', colors='black')
+    ax1.grid(True, alpha=0.2, linestyle='--', color='gray')
 
-    # 设置x轴刻度
-    start, end = x_range
-    if end - start <= 60:
-        tick_step = 5
-    elif end - start <= 120:
-        tick_step = 10
-    else:
-        tick_step = 20
-    ax1.set_xticks(np.arange(start, end + 1, tick_step))
+    lines = line1 + line2
+    labels = [line.get_label() for line in lines]
+    ax1.legend(lines, labels, fontsize=legend_fontsize, loc=legend_loc, frameon=False, ncols=2)
 
-    # 添加网格（只为主坐标轴添加）
-    if show_grid:
-        ax1.grid(True, alpha=0.2, linestyle='--', color='gray')
-
-    # 添加图例（合并两个轴的图例）
-    if show_legend:
-        lines = line1 + line2
-        labels = [line.get_label() for line in lines]
-        ax1.legend(lines, labels, fontsize=11, loc=legend_pos, frameon=True)
-
-    # 调整布局
     plt.tight_layout()
-
-    # 保存图片
-    if save_path:
-        plt.savefig(save_path, dpi=dpi, bbox_inches='tight')
-        print(f"图片已保存至: {save_path}")
-
-    return fig, (ax1, ax2)
+    plt.savefig(save_path, dpi=dpi, bbox_inches='tight')
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -173,32 +77,25 @@ if __name__ == "__main__":
                      33.5, 0.8, 0.3, 0.4, 2, 0.9, 18, 50, 8, 6.5, 6.2, 0.3, 0.4, 0.2, 10.3, 23.5, 24, 12.3, 10, 9.5, 50,
                      26, 23, 30.5, 18, 16.5, 9.5, 10.3, 10.5, 12]
 
-    # 准备数据
-    custom_data = [chunk_length_list, velocity_list]
+    data = [chunk_length_list, velocity_list]
 
-    # 自定义设置
-    custom_colors = plt.cm.tab10(np.linspace(0, 1, 3))
-    custom_line_styles = ['-', '--']
-    custom_markers = ['o', 'x']
-    custom_legend_labels = ['视频片段长度', '水平方向角速度']
+    colors = plt.cm.tab10(np.linspace(0, 1, 3))
+    line_styles = ['-', '--']
+    markers = ['o', 'x']
+    legend_labels = ['视频片段长度', '水平方向角速度']
 
-    fig, axes = plot_lines(
-        data=custom_data,
+    plot_lines(
+        data=data,
         x_range=(0, 52),
-        y1_range=(0, 7.5),  # 左y轴范围
-        y2_range=(0, 65),  # 右y轴范围
-        figure_size=(8, 5),
-        title='',
-        y1_label='视频片段长度(s)',  # 左y轴标签
-        y2_label='水平方向角速度(°/s)',  # 右y轴标签
-        colors=custom_colors,
-        line_styles=custom_line_styles,
-        markers=custom_markers,
-        line_width=2.5,
-        legend_labels=custom_legend_labels,
-        legend_pos='upper right',
-        marker_size=8,
-        save_path='chunk_length_velocity.png'
+        y_left_range=(0, 7.5),
+        y_right_range=(0, 65),
+        x_label_name="时间(s)",
+        y_left_label_name='视频片段长度(s)',
+        y_right_label_name='水平方向角速度(°/s)',
+        colors=colors,
+        line_styles=line_styles,
+        markers=markers,
+        legend_labels=legend_labels,
+        legend_loc='upper center',
+        save_path='chunk_length_velocity.png',
     )
-
-    plt.show()
