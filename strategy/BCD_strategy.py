@@ -1,0 +1,30 @@
+from strategy.VAAC_strategy import VAACStrategy
+
+
+class BCDStrategy(VAACStrategy):
+    def __init__(self):
+        super().__init__()
+
+    # 带宽：不考虑带宽情况
+    # 视野预测：根据历史信息预测下一秒视野落点，采用最小二乘法
+    # 哪些瓦片传输：用户预测视野内的瓦片传输，之外的不传
+    # abr策略：用户预测视野内的瓦片选择高质量
+    # chunk长度：根据buffer长度动态决定
+    def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count, netSim):
+        download_decision, bitrate_decision, _ = super().make_decision(buffer_length, motion_history, bandwidth_history,
+                                                                       bitrate_list, tile_count, netSim)
+        if buffer_length <= 2000:
+            chunk_length = 1
+        elif buffer_length <= 4000:
+            chunk_length = 2
+        elif buffer_length <= 6000:
+            chunk_length = 3
+        else:
+            chunk_length = 4
+        return download_decision, bitrate_decision, chunk_length
+
+    # 所有瓦片均下载，所有瓦片均选择最低比特率，chunk长度为4
+    def make_first_decision(self, bitrate_list, tile_count):
+        download_decision = [True] * tile_count
+        bitrate_decision = [bitrate_list[0]] * tile_count
+        return download_decision, bitrate_decision, self.chunk_length

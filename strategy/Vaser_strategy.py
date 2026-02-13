@@ -1,10 +1,7 @@
-import random
-
-from e3po.agent.agent import Agent
-from e3po.utils.projection_utilities import fov_to_3d_polar_coord, _3d_polar_coord_to_pixel_coord
+from strategy.strategy import Strategy
 
 
-class AdaptiveBitrateAgent(Agent):
+class VaserStrategy(Strategy):
     def __init__(self):
         super().__init__()
         self.chunk_length = 2
