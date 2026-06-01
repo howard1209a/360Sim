@@ -38,7 +38,7 @@ class SPB360Strategy(Strategy):
         self.s_t_redundancy = 1.0  # 0.9
 
         self.v2lk_list = []
-        self.v2lk_file_path = r"D:\codes\360Sim\e3po\result\dynamic_chunk\vega_v_kl.txt"
+        self.v2lk_file_path = r"D:\codes\360Sim\result\dynamic_chunk\vega_v_kl.txt"
 
     def make_decision(self, buffer_length, motion_history, bandwidth_history, bitrate_list, tile_count, netSim):
         # lazy loading

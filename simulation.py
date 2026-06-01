@@ -6,8 +6,6 @@ import numpy as np
 from tqdm import tqdm
 
 import yaml
-from e3po.utils.cpu_cycle import rdtsc
-from e3po.utils.projection_utilities import fov_to_3d_polar_coord, _3d_polar_coord_to_pixel_coord
 from strategy.BCD_strategy import BCDStrategy
 from strategy.LB_strategy import LBStrategy
 from strategy.PW_strategy import PWStrategy
@@ -15,7 +13,9 @@ from strategy.SPB360_strategy import SPB360Strategy
 from strategy.VAAC_strategy import VAACStrategy
 from strategy.Vaser_strategy import VaserStrategy
 from strategy.VAACE_strategy import VAACEStrategy
+from utils.cpu_cycle import rdtsc
 from utils.motion_trace import read_client_log
+from utils.projection_utilities import fov_to_3d_polar_coord, _3d_polar_coord_to_pixel_coord
 
 bandwidth_scale_ratio = 0.5
 
@@ -33,7 +33,7 @@ class Sim():
         net_sim.start_watch()
 
     def load_motion_record(self):
-        motion_file_path = self.config["absolute_project_path"] + "e3po/source/motion_trace/" + \
+        motion_file_path = self.config["absolute_project_path"] + "source/motion_trace/" + \
                            self.config["settings"]["motion"]["motion_file"]
         interval = int(1000 / self.config["settings"]["motion"]["motion_frequency"])
         self.motion_record = read_client_log(motion_file_path, interval, 1)
@@ -46,7 +46,7 @@ class Sim():
         self.motion_clock = list(range(0, max_motion_ts, interval))
 
     def load_bandwidth_record(self):
-        network_file_path = self.config["absolute_project_path"] + "e3po/source/network_trace/" + \
+        network_file_path = self.config["absolute_project_path"] + "source/network_trace/" + \
                             self.config["settings"]["network"]["network_trace_file"]  # 结果文件输出路径
         # 网络吞吐量单位是字节
         self.bandwidth_record = []
@@ -101,13 +101,13 @@ class NetSim():
         self.isDownloadEnd = False  # 当前直播视频下载是否结束
 
         # 仿真结果参数
-        self.record_file_path = config["absolute_project_path"] + "e3po/result/" + config[
+        self.record_file_path = config["absolute_project_path"] + "result/" + config[
             "group_name"] + "/" + self.config["settings"]["algorithm"]["abr_strategy"] + ".csv"  # 结果文件输出路径
         self.metric_list = ["clock", "avg_frame_bitrate", "frame_bitrate_deviation", "black_ratio_in_view",
                             "is_rebuffer",
                             "latency", "download_data_in_interval"]  # 需要纪录的指标列表
         self.record_result_list = []
-        self.chunk_data_file_path = self.config["absolute_project_path"] + "e3po/result/" + self.config[
+        self.chunk_data_file_path = self.config["absolute_project_path"] + "result/" + self.config[
             "group_name"] + "/" + self.config["settings"]["algorithm"]["abr_strategy"] + "_chunk_data.csv"
 
         self.load_agent()
@@ -228,9 +228,9 @@ class NetSim():
                 f.write(
                     f"{chunk.start_download_clock} {chunk.get_chunk_bitrate()} {chunk.get_chunk_data_size()} {chunk.end_download_clock - chunk.start_download_clock}\n")
 
-        # 如果当前策略是vega，则额外记录决策v到kl映射
-        if isinstance(self.agent, SPB360Strategy):
-            self.agent.record_v2lk_list()
+        # # 如果当前策略是vega，则额外记录决策v到kl映射
+        # if isinstance(self.agent, SPB360Strategy):
+        #     self.agent.record_v2lk_list()
 
         print("策略消耗的cpu cycle: " + str(make_decision_cpu_cycles))
 
@@ -252,7 +252,7 @@ class NetSim():
     def get_video_quality(self):
         # 如果当前未下载任何chunk，则用户整个画面都是黑屏，因此质量和质量方差都是0，视野内黑边比例为1
         if len(self.chunk_list) == 0:
-            return 0, 0, 0
+            return 0, 0, 1
 
         motion = self.motion_record[self.clock]
         tile_point_count_list = self.get_point_distribution(float(motion["yaw"]), float(motion["pitch"]),
@@ -342,9 +342,9 @@ class Chunk():
         self.tile_height = config["settings"]["video"]["height"] / self.tile_height_num  # 单个瓦片高度
 
         self.ffmpeg_path = config["ffmpeg_path"]  # ffmpeg路径
-        self.generate_video_file_path = config["absolute_project_path"] + "e3po/source/video/" + config[
+        self.generate_video_file_path = config["absolute_project_path"] + "source/video/" + config[
             "group_name"] + "/" + config["settings"]["video"]["video_name"].split('.')[0] + "/tile"  # 生成切片的路径
-        self.video_path = config["absolute_project_path"] + "e3po/source/video/" + config["settings"]["video"][
+        self.video_path = config["absolute_project_path"] + "source/video/" + config["settings"]["video"][
             "video_name"]  # 原视频路径
 
         self.tile_list = []  # 本chunk全部tile列表
